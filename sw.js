@@ -50,7 +50,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match('./index.html').then(cachedDoc => cachedDoc || caches.match(event.request)))
+        .catch(() => caches.match('./index.html') || caches.match(event.request))
     );
     return;
   }

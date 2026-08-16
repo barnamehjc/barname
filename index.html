@@ -2309,6 +2309,7 @@
               logs: Array.isArray(parsed.logs) ? parsed.logs : [],
               plans: Array.isArray(parsed.plans) ? parsed.plans : [],
               settings: parsed.settings || { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
+              activeStopwatch: parsed.activeStopwatch || null,
               lastModified: parsed.lastModified || 0
             };
           }
@@ -2318,6 +2319,7 @@
             logs: [],
             plans: [],
             settings: { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
+            activeStopwatch: null,
             lastModified: 0
           };
         }
@@ -2328,11 +2330,13 @@
           logs: [],
           plans: [],
           settings: { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
+          activeStopwatch: null,
           lastModified: 0
         };
       }
 
-      // 2. Fetch authoritative cloud state from server (/api/sync)
+      renderAll();
+      syncActiveStopwatchFromAppData();
       await syncFromCloud(true);
     }
 
@@ -2353,10 +2357,12 @@
                 logs: Array.isArray(serverData.logs) ? serverData.logs : [],
                 plans: Array.isArray(serverData.plans) ? serverData.plans : [],
                 settings: serverData.settings || appData.settings,
+                activeStopwatch: serverData.activeStopwatch || null,
                 lastModified: serverTime
               };
               localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
               isInitialCloudLoaded = true;
+              syncActiveStopwatchFromAppData();
               renderAll();
               if (!silent) triggerToast(`همگام‌سازی ابری انجام شد ☁️`, 'success');
             } else if (localTime > serverTime) {
@@ -2395,13 +2401,13 @@
             body: JSON.stringify(payload)
           });
         } catch (err) {}
-      }, 300);
+      }, 250);
     }
 
-    // Auto-sync every 5 seconds in background so phone & laptop are in sync
+    // Auto-sync every 15 seconds in background (Optimal balance between freshness and low network/battery usage)
     setInterval(() => {
       syncFromCloud(true);
-    }, 5000);
+    }, 15000);
 
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
@@ -2525,16 +2531,11 @@
     }
 
     // --- ⏱ BULLETPROOF BACKGROUND PERSISTENT STOPWATCH ENGINE ---
-    function getStopwatchStorageKey() {
-      return `gemini_active_stopwatch_${currentLoggedInUser || 'default'}`;
-    }
-
     function saveActiveStopwatchToDisk() {
-      const key = getStopwatchStorageKey();
       if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
         const subjectSelect = document.getElementById('dashStopwatchSubjectSelect');
         const subjectId = subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy');
-        const data = {
+        appData.activeStopwatch = {
           type: 'dash',
           isRunning: dashStopwatch.isRunning,
           startTime: dashStopwatch.startTime,
@@ -2544,11 +2545,10 @@
           subjectId: subjectId,
           timestamp: Date.now()
         };
-        localStorage.setItem(key, JSON.stringify(data));
       } else if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
         const subjectSelect = document.getElementById('stopwatchSubjectSelect');
         const notesInput = document.getElementById('stopwatchNotes');
-        const data = {
+        appData.activeStopwatch = {
           type: 'logger',
           isRunning: stopwatch.isRunning,
           startTime: stopwatch.startTime,
@@ -2558,32 +2558,48 @@
           notes: notesInput ? notesInput.value : '',
           timestamp: Date.now()
         };
-        localStorage.setItem(key, JSON.stringify(data));
       } else {
-        localStorage.removeItem(key);
+        appData.activeStopwatch = null;
       }
+      saveDataToStorage(false);
     }
 
     function clearActiveStopwatchFromDisk() {
-      localStorage.removeItem(getStopwatchStorageKey());
+      appData.activeStopwatch = null;
+      saveDataToStorage(false);
     }
 
-    function restoreActiveStopwatchState() {
-      const key = getStopwatchStorageKey();
-      const saved = localStorage.getItem(key);
-      if (!saved) return;
+    function syncActiveStopwatchFromAppData() {
+      const swState = appData.activeStopwatch;
+      if (swState && swState.isRunning && swState.startTime) {
+        const elapsed = Math.floor((Date.now() - swState.startTime) / 1000) + (swState.elapsedSeconds || 0);
 
-      try {
-        const data = JSON.parse(saved);
-        if (!data) return;
-
-        if (data.type === 'dash') {
-          dashStopwatch.startTimeFormatted = data.startTimeFormatted || formatCurrentClockTime();
-          dashStopwatch.endTimeFormatted = data.endTimeFormatted || '';
+        if (swState.type === 'logger') {
+          stopwatch.isRunning = true;
+          stopwatch.startTime = swState.startTime;
+          stopwatch.elapsedSeconds = swState.elapsedSeconds || 0;
+          stopwatch.startTimeFormatted = swState.startTimeFormatted || formatCurrentClockTime();
           
-          if (data.subjectId) {
+          if (swState.subjectId) {
+            const select = document.getElementById('stopwatchSubjectSelect');
+            if (select) select.value = swState.subjectId;
+            handleDropdownSubjectChange(swState.subjectId);
+          }
+          if (swState.notes) {
+            const notesInput = document.getElementById('stopwatchNotes');
+            if (notesInput) notesInput.value = swState.notes;
+          }
+          startTimerInterval();
+          updateStopwatchUI(true);
+        } else {
+          dashStopwatch.isRunning = true;
+          dashStopwatch.startTime = swState.startTime;
+          dashStopwatch.startTimeFormatted = swState.startTimeFormatted || formatCurrentClockTime();
+          dashStopwatch.elapsedSeconds = elapsed;
+
+          if (swState.subjectId) {
             const select = document.getElementById('dashStopwatchSubjectSelect');
-            if (select) select.value = data.subjectId;
+            if (select) select.value = swState.subjectId;
             updateDashStopwatchColor();
           }
 
@@ -2598,74 +2614,77 @@
           const statusDot = document.getElementById('dashStopwatchDot');
 
           if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
+          if (endText) endText.textContent = 'در حال ثبت...';
+          if (btnText) btnText.textContent = 'استپ';
+          if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+          if (btnIcon) btnIcon.setAttribute('data-lucide', 'pause');
 
-          if (data.isRunning && data.startTime) {
-            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
-            dashStopwatch.isRunning = true;
-            dashStopwatch.startTime = data.startTime;
-            dashStopwatch.elapsedSeconds = elapsed;
+          if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
+          if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
+          if (statusText) statusText.textContent = 'در حال ثبت زمان';
+          if (actionsRow) actionsRow.classList.add('hidden');
 
-            if (endText) endText.textContent = 'در حال ثبت...';
-            if (btnText) btnText.textContent = 'استپ';
-            if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-            if (btnIcon) btnIcon.setAttribute('data-lucide', 'pause');
+          renderDashStopwatchDisplay(elapsed);
 
-            if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
-            if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
-            if (statusText) statusText.textContent = 'در حال ثبت زمان';
-            if (actionsRow) actionsRow.classList.add('hidden');
-
-            renderDashStopwatchDisplay(elapsed);
-
-            clearInterval(dashStopwatch.timerInterval);
-            dashStopwatch.timerInterval = setInterval(() => {
-              const currentElapsed = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
-              dashStopwatch.elapsedSeconds = currentElapsed;
-              renderDashStopwatchDisplay(currentElapsed);
-            }, 1000);
-          } else if (data.elapsedSeconds > 0) {
-            dashStopwatch.isRunning = false;
-            dashStopwatch.elapsedSeconds = data.elapsedSeconds;
-            renderDashStopwatchDisplay(data.elapsedSeconds);
-            if (endText) endText.textContent = dashStopwatch.endTimeFormatted || formatCurrentClockTime();
-            if (btnText) btnText.textContent = 'ادامه';
-            if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-            if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
-            if (actionsRow) actionsRow.classList.remove('hidden');
-          }
-        } else if (data.type === 'logger') {
-          if (data.subjectId) {
-            const select = document.getElementById('stopwatchSubjectSelect');
-            if (select) select.value = data.subjectId;
-            handleDropdownSubjectChange(data.subjectId);
-          }
-          if (data.notes) {
-            const notesInput = document.getElementById('stopwatchNotes');
-            if (notesInput) notesInput.value = data.notes;
-          }
-
-          if (data.isRunning && data.startTime) {
-            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
-            stopwatch.isRunning = true;
-            stopwatch.startTime = data.startTime;
-            stopwatch.elapsedSeconds = elapsed;
-            stopwatch.startTimeFormatted = data.startTimeFormatted || formatCurrentClockTime();
-
-            startTimerInterval();
-            updateStopwatchUI(true);
-          } else if (data.elapsedSeconds > 0) {
-            stopwatch.isRunning = false;
-            stopwatch.elapsedSeconds = data.elapsedSeconds;
-            const h = String(Math.floor(data.elapsedSeconds / 3600)).padStart(2, '0');
-            const m = String(Math.floor((data.elapsedSeconds % 3600) / 60)).padStart(2, '0');
-            const s = String(data.elapsedSeconds % 60).padStart(2, '0');
-            const d = document.getElementById('stopwatchDisplay');
-            if (d) d.textContent = `${h}:${m}:${s}`;
-            updateStopwatchUI(false);
-          }
+          clearInterval(dashStopwatch.timerInterval);
+          dashStopwatch.timerInterval = setInterval(() => {
+            const currentElapsed = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
+            dashStopwatch.elapsedSeconds = currentElapsed;
+            renderDashStopwatchDisplay(currentElapsed);
+          }, 1000);
         }
-        if (window.lucide && lucide.createIcons) lucide.createIcons();
-      } catch (e) {}
+      } else if (swState && !swState.isRunning && swState.elapsedSeconds > 0) {
+        if (swState.type === 'logger') {
+          stopwatch.isRunning = false;
+          clearInterval(stopwatch.timerInterval);
+          stopwatch.elapsedSeconds = swState.elapsedSeconds;
+          const h = String(Math.floor(swState.elapsedSeconds / 3600)).padStart(2, '0');
+          const m = String(Math.floor((swState.elapsedSeconds % 3600) / 60)).padStart(2, '0');
+          const s = String(swState.elapsedSeconds % 60).padStart(2, '0');
+          const d = document.getElementById('stopwatchDisplay');
+          if (d) d.textContent = `${h}:${m}:${s}`;
+          updateStopwatchUI(false);
+        } else {
+          dashStopwatch.isRunning = false;
+          clearInterval(dashStopwatch.timerInterval);
+          dashStopwatch.elapsedSeconds = swState.elapsedSeconds;
+          dashStopwatch.startTimeFormatted = swState.startTimeFormatted || '';
+          dashStopwatch.endTimeFormatted = swState.endTimeFormatted || '';
+          renderDashStopwatchDisplay(swState.elapsedSeconds);
+
+          const startText = document.getElementById('dashStopwatchStartTimeText');
+          const endText = document.getElementById('dashStopwatchEndTimeText');
+          const actionsRow = document.getElementById('dashStopwatchActionsRow');
+          const btn = document.getElementById('dashStopwatchBtn');
+          const btnText = document.getElementById('dashStopwatchBtnText');
+          const btnIcon = document.getElementById('dashStopwatchBtnIcon');
+          const statusBadge = document.getElementById('dashStopwatchStatusBadge');
+          const statusText = document.getElementById('dashStopwatchStatusText');
+          const statusDot = document.getElementById('dashStopwatchDot');
+
+          if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
+          if (endText) endText.textContent = dashStopwatch.endTimeFormatted || formatCurrentClockTime();
+          if (btnText) btnText.textContent = 'ادامه';
+          if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+          if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
+          if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/20 flex items-center gap-1';
+          if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
+          if (statusText) statusText.textContent = 'آماده ثبت';
+          if (actionsRow) actionsRow.classList.remove('hidden');
+        }
+      } else if (!swState) {
+        if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
+          cancelDashStopwatch(false);
+        }
+        if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
+          resetStopwatch(false);
+        }
+      }
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+
+    function restoreActiveStopwatchState() {
+      syncActiveStopwatchFromAppData();
     }
 
     function toggleDashStopwatch() {

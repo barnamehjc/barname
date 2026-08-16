@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const PUBLIC_DIR = path.resolve(__dirname);
+const PUBLIC_DIR = __dirname;
 const DB_FILE = path.join(PUBLIC_DIR, 'database.json');
 
 const DEFAULT_AUTH_USERS = {
@@ -26,9 +26,6 @@ const MIME_TYPES = {
   '.jpg': 'image/jpeg',
   '.ico': 'image/x-icon'
 };
-
-// Async Write Queue to prevent race conditions during concurrent write operations
-let writeQueue = Promise.resolve();
 
 function readDatabase() {
   return new Promise((resolve) => {
@@ -50,17 +47,12 @@ function readDatabase() {
 }
 
 function writeDatabase(db) {
-  writeQueue = writeQueue.then(() => {
-    return new Promise((resolve, reject) => {
-      fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8', (err) => {
-        if (err) reject(err);
-        else resolve(true);
-      });
+  return new Promise((resolve, reject) => {
+    fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8', (err) => {
+      if (err) reject(err);
+      else resolve(true);
     });
-  }).catch(err => {
-    console.error('Database write error:', err);
   });
-  return writeQueue;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -103,7 +95,7 @@ const server = http.createServer(async (req, res) => {
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
         try {
-          const payload = JSON.parse(body || '{}');
+          const payload = JSON.parse(body);
           const username = (payload.username || '').trim().toLowerCase();
           const password = (payload.password || '').trim();
 
@@ -134,7 +126,7 @@ const server = http.createServer(async (req, res) => {
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
         try {
-          const payload = JSON.parse(body || '{}');
+          const payload = JSON.parse(body);
           const username = (payload.username || '').trim().toLowerCase();
 
           if (username === 'sajad') {
@@ -179,7 +171,7 @@ const server = http.createServer(async (req, res) => {
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
         try {
-          const parsed = JSON.parse(body || '{}');
+          const parsed = JSON.parse(body);
           const postUser = (parsed.auth_user || username).trim().toLowerCase();
           delete parsed.auth_user;
           delete parsed.auth_users;
@@ -201,15 +193,8 @@ const server = http.createServer(async (req, res) => {
 
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
-  // Safe path resolution preventing Directory Traversal
-  const safeReqPath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
-  const filePath = path.resolve(PUBLIC_DIR, '.' + path.sep + safeReqPath.replace(/^[\/\\]/, ''));
-
-  if (!filePath.startsWith(PUBLIC_DIR)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain' });
-    res.end('403 Forbidden');
-    return;
-  }
+  const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
+  const filePath = path.join(PUBLIC_DIR, safePath);
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
@@ -246,12 +231,6 @@ const server = http.createServer(async (req, res) => {
     });
 
     const stream = fs.createReadStream(filePath);
-    stream.on('error', (streamErr) => {
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('500 Internal Server Error');
-      }
-    });
     stream.pipe(res);
   });
 });
@@ -259,4 +238,3 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Multi-User Study Tracker with Admin Panel running on http://0.0.0.0:${PORT}`);
 });
-
