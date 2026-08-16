@@ -1,0 +1,44 @@
+{
+  "name": "برنامه درسی یازدهم | سامانه هوشمند مطالعه",
+  "short_name": "برنامه درسی ۱۱",
+  "description": "سامانه جامع و آفلاین برنامه‌ریزی، ثبت زمان و تحلیل تست‌های پایه یازدهم",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "کرنومتر مطالعه",
+      "short_name": "زمان‌سنج",
+      "description": "شروع ثبت فوری زمان مطالعه",
+      "url": "./index.html?section=logger",
+      "icons": [{ "src": "./icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "تارگت‌های تست",
+      "short_name": "برنامه‌ریزی",
+      "description": "مشاهده تارگت‌های تست امروز",
+      "url": "./index.html?section=planner",
+      "icons": [{ "src": "./icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "بررسی روزانه",
+      "short_name": "بررسی روز",
+      "description": "بررسی صفر تا صد عملکرد دروس",
+      "url": "./index.html?section=dailyReview",
+      "icons": [{ "src": "./icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}
