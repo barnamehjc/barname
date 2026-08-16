@@ -155,7 +155,15 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // --- ⏰ SERVER TIME API (source of truth for stopwatch across all devices) ---
+  if (reqPath === '/api/time') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache, no-store' });
+    res.end(JSON.stringify({ serverTime: Date.now() }));
+    return;
+  }
+
   // --- 🔄 MULTI-USER CLOUD SYNC API ---
+
   if (reqPath === '/api/sync') {
     const username = (parsedUrl.searchParams.get('user') || 'sajad').trim().toLowerCase();
     const db = await readDatabase();

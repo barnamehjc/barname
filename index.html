@@ -2289,6 +2289,29 @@
     // Unique device ID to prevent lastModified timestamp collision between two devices
     const DEVICE_ID = 'dev_' + Math.random().toString(36).substring(2, 9);
 
+    // ⏰ SERVER TIME ENGINE: All stopwatch calculations use server time, not device clock
+    // This eliminates clock skew between laptop, phone, tablet, etc.
+    let serverTimeOffset = 0; // = serverTime - Date.now() at last sync
+
+    function serverNow() {
+      return Date.now() + serverTimeOffset;
+    }
+
+    async function syncServerTime() {
+      try {
+        const t0 = Date.now();
+        const res = await fetch('./api/time?_t=' + t0, { cache: 'no-store' });
+        if (!res.ok) return;
+        const t1 = Date.now();
+        const data = await res.json();
+        // Compensate for network round-trip latency (half RTT)
+        const rtt = t1 - t0;
+        serverTimeOffset = data.serverTime + Math.floor(rtt / 2) - Date.now();
+      } catch (e) {
+        serverTimeOffset = 0; // fallback: use local clock
+      }
+    }
+
     function getUserStorageKey() {
       return `gemini_study_data_${currentLoggedInUser || 'default'}`;
     }
@@ -2338,6 +2361,7 @@
       }
 
       renderAll();
+      await syncServerTime(); // sync clock with server before stopwatch calculations
       syncActiveStopwatchFromAppData();
       await syncFromCloud(true);
     }
@@ -2616,8 +2640,8 @@
     function syncActiveStopwatchFromAppData() {
       const swState = appData.activeStopwatch;
       if (swState && swState.isRunning && swState.startTime) {
-        // Calculate elapsed purely from startTime. Clamp to 0 to handle clock skew between devices.
-        const elapsed = Math.max(0, Math.floor((Date.now() - swState.startTime) / 1000));
+        // Calculate elapsed using server-normalized time to prevent clock skew across devices
+        const elapsed = Math.max(0, Math.floor((serverNow() - swState.startTime) / 1000));
 
         if (swState.type === 'logger') {
           stopwatch.isRunning = true;
@@ -2673,7 +2697,7 @@
 
           clearInterval(dashStopwatch.timerInterval);
           dashStopwatch.timerInterval = setInterval(() => {
-            const currentElapsed = Math.max(0, Math.floor((Date.now() - dashStopwatch.startTime) / 1000));
+            const currentElapsed = Math.max(0, Math.floor((serverNow() - dashStopwatch.startTime) / 1000));
             dashStopwatch.elapsedSeconds = currentElapsed;
             renderDashStopwatchDisplay(currentElapsed);
           }, 1000);
@@ -2776,10 +2800,11 @@
       if (!dashStopwatch.isRunning) {
         dashStopwatch.isRunning = true;
         if (!dashStopwatch.startTime) {
-          dashStopwatch.startTime = Date.now();
+          dashStopwatch.startTime = serverNow();
           dashStopwatch.startTimeFormatted = formatCurrentClockTime();
         } else {
-          dashStopwatch.startTime = Date.now() - (dashStopwatch.elapsedSeconds * 1000);
+          // Resume: recalculate startTime so elapsed stays continuous
+          dashStopwatch.startTime = serverNow() - (dashStopwatch.elapsedSeconds * 1000);
         }
         
         if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
@@ -2795,7 +2820,7 @@
 
         clearInterval(dashStopwatch.timerInterval);
         dashStopwatch.timerInterval = setInterval(() => {
-          const elapsed = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
+          const elapsed = Math.max(0, Math.floor((serverNow() - dashStopwatch.startTime) / 1000));
           dashStopwatch.elapsedSeconds = elapsed;
           renderDashStopwatchDisplay(elapsed);
         }, 1000);
@@ -2805,7 +2830,7 @@
       } else {
         dashStopwatch.isRunning = false;
         clearInterval(dashStopwatch.timerInterval);
-        dashStopwatch.elapsedSeconds = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
+        dashStopwatch.elapsedSeconds = Math.max(0, Math.floor((serverNow() - dashStopwatch.startTime) / 1000));
         dashStopwatch.endTimeFormatted = formatCurrentClockTime();
 
         if (endText) endText.textContent = dashStopwatch.endTimeFormatted;
@@ -3967,10 +3992,11 @@
       if (!stopwatch.isRunning) {
         stopwatch.isRunning = true;
         if (!stopwatch.startTime) {
-          stopwatch.startTime = Date.now();
+          stopwatch.startTime = serverNow();
           stopwatch.startTimeFormatted = formatCurrentClockTime();
         } else {
-          stopwatch.startTime = Date.now() - (stopwatch.elapsedSeconds * 1000);
+          // Resume: recalculate startTime so elapsed stays continuous
+          stopwatch.startTime = serverNow() - (stopwatch.elapsedSeconds * 1000);
         }
         startTimerInterval();
         updateStopwatchUI(true);
@@ -3979,7 +4005,7 @@
       } else {
         stopwatch.isRunning = false;
         clearInterval(stopwatch.timerInterval);
-        stopwatch.elapsedSeconds = Math.floor((Date.now() - stopwatch.startTime) / 1000);
+        stopwatch.elapsedSeconds = Math.max(0, Math.floor((serverNow() - stopwatch.startTime) / 1000));
         updateStopwatchUI(false);
         saveActiveStopwatchToDisk();
       }
@@ -3988,7 +4014,7 @@
     function startTimerInterval() {
       clearInterval(stopwatch.timerInterval);
       stopwatch.timerInterval = setInterval(() => {
-        const total = Math.max(0, Math.floor((Date.now() - stopwatch.startTime) / 1000));
+        const total = Math.max(0, Math.floor((serverNow() - stopwatch.startTime) / 1000));
         stopwatch.elapsedSeconds = total;
         const h = String(Math.floor(total / 3600)).padStart(2, '0');
         const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
