@@ -180,13 +180,15 @@ const server = http.createServer(async (req, res) => {
           const postUser = (parsed.auth_user || username).trim().toLowerCase();
           delete parsed.auth_user;
           delete parsed.auth_users;
+          // Preserve client's lastModified and lastDevice exactly — DO NOT overwrite with server time
+          // Server time is only stored as metadata, not used for conflict resolution
           parsed.lastServerSync = Date.now();
 
           db.users[postUser] = parsed;
           await writeDatabase(db);
 
           res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
-          res.end(JSON.stringify({ success: true, user: postUser, timestamp: parsed.lastServerSync }));
+          res.end(JSON.stringify({ success: true, user: postUser, timestamp: parsed.lastModified || parsed.lastServerSync }));
         } catch (err) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));

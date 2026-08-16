@@ -2286,6 +2286,8 @@
     // --- 🔄 BULLETPROOF MULTI-USER CLOUD & LOCAL STORAGE ENGINE ---
     let cloudSyncTimeout = null;
     let isInitialCloudLoaded = false;
+    // Unique device ID to prevent lastModified timestamp collision between two devices
+    const DEVICE_ID = 'dev_' + Math.random().toString(36).substring(2, 9);
 
     function getUserStorageKey() {
       return `gemini_study_data_${currentLoggedInUser || 'default'}`;
@@ -2343,30 +2345,41 @@
     async function syncFromCloud(silent = true) {
       if (!currentLoggedInUser) return;
       try {
-        const res = await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}`, { cache: 'no-store' });
+        const res = await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}&_t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const serverData = await res.json();
           if (serverData && serverData.exists !== false && Array.isArray(serverData.logs)) {
             const serverTime = serverData.lastModified || 0;
             const localTime = appData.lastModified || 0;
+            // Use lastDevice to detect genuine changes from another device
+            const serverDevice = serverData.lastDevice || '';
 
-            // If server has newer data, update local state
-            if (serverTime > localTime || !isInitialCloudLoaded) {
+            // Trust server if: initial load, OR server is strictly newer, OR server was written by a different device
+            const shouldPullFromServer = !isInitialCloudLoaded || serverTime > localTime || (serverTime === localTime && serverDevice && serverDevice !== DEVICE_ID);
+
+            if (shouldPullFromServer) {
+              const prevSwState = appData.activeStopwatch;
               appData = {
                 subjects: (serverData.subjects && serverData.subjects.length > 0) ? serverData.subjects : [...DEFAULT_SUBJECTS],
                 logs: Array.isArray(serverData.logs) ? serverData.logs : [],
                 plans: Array.isArray(serverData.plans) ? serverData.plans : [],
                 settings: serverData.settings || appData.settings,
-                activeStopwatch: serverData.activeStopwatch || null,
-                lastModified: serverTime
+                activeStopwatch: serverData.activeStopwatch !== undefined ? serverData.activeStopwatch : null,
+                lastModified: serverTime,
+                lastDevice: serverDevice
               };
               localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
               isInitialCloudLoaded = true;
-              syncActiveStopwatchFromAppData();
+              // Only re-sync stopwatch UI if stopwatch state actually changed
+              const newSwState = appData.activeStopwatch;
+              const swChanged = JSON.stringify(prevSwState) !== JSON.stringify(newSwState);
+              if (swChanged) {
+                syncActiveStopwatchFromAppData();
+              }
               renderAll();
               if (!silent) triggerToast(`همگام‌سازی ابری انجام شد ☁️`, 'success');
             } else if (localTime > serverTime) {
-              // Local has newer changes, push to cloud
+              // Local has strictly newer changes, push to cloud
               pushToCloud();
             }
           } else if (serverData && serverData.exists === false && (appData.logs.length > 0 || appData.plans.length > 0)) {
@@ -2383,6 +2396,7 @@
     function saveDataToStorage(showToast = false) {
       if (!currentLoggedInUser) return;
       appData.lastModified = Date.now();
+      appData.lastDevice = DEVICE_ID;
       localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
       pushToCloud();
       if (showToast) triggerToast('اطلاعات با موفقیت ذخیره و همگام شد ☁️', 'success');
@@ -2394,6 +2408,7 @@
       cloudSyncTimeout = setTimeout(async () => {
         try {
           appData.lastModified = appData.lastModified || Date.now();
+          appData.lastDevice = DEVICE_ID;
           const payload = Object.assign({}, appData, { auth_user: currentLoggedInUser });
           await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}`, {
             method: 'POST',
@@ -2404,19 +2419,41 @@
       }, 250);
     }
 
-    // Auto-sync every 15 seconds in background (Optimal balance between freshness and low network/battery usage)
-    setInterval(() => {
-      syncFromCloud(true);
-    }, 15000);
+    // ─── هماهنگی خودکار بین دستگاه‌ها: هر ۱۵ ثانیه بررسی، در صورت تغییر توسط دستگاه دیگر → ریلود کامل ───
+    async function checkAndReloadIfNeeded() {
+      if (!currentLoggedInUser) return;
+      try {
+        const res = await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}&_t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const serverData = await res.json();
+        if (!serverData || serverData.exists === false) return;
 
+        const serverTime = serverData.lastModified || 0;
+        const localTime = appData.lastModified || 0;
+        const serverDevice = serverData.lastDevice || '';
+
+        // اگه دستگاه دیگه‌ای داده‌های جدیدتر آپلود کرده → ریلود کامل صفحه
+        const changedByOtherDevice = serverDevice && serverDevice !== DEVICE_ID;
+        const serverIsNewer = serverTime > localTime;
+
+        if (serverIsNewer && changedByOtherDevice) {
+          window.location.reload();
+        }
+      } catch (err) {}
+    }
+
+    // بررسی هر ۱۵ ثانیه
+    setInterval(checkAndReloadIfNeeded, 15000);
+
+    // بررسی فوری هنگام بازگشت به تب یا روشن شدن صفحه
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        syncFromCloud(true);
+        checkAndReloadIfNeeded();
       }
     });
 
     window.addEventListener('focus', () => {
-      syncFromCloud(true);
+      checkAndReloadIfNeeded();
     });
 
     function injectSampleDemoData(showToast = true) {
@@ -2535,10 +2572,14 @@
       if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
         const subjectSelect = document.getElementById('dashStopwatchSubjectSelect');
         const subjectId = subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy');
+        // Always store the REAL startTime (absolute epoch ms) so other devices can calculate elapsed correctly
+        const realStartTime = dashStopwatch.isRunning
+          ? dashStopwatch.startTime  // already set as Date.now() - elapsed*1000
+          : (dashStopwatch.startTime || Date.now() - dashStopwatch.elapsedSeconds * 1000);
         appData.activeStopwatch = {
           type: 'dash',
           isRunning: dashStopwatch.isRunning,
-          startTime: dashStopwatch.startTime,
+          startTime: realStartTime,
           startTimeFormatted: dashStopwatch.startTimeFormatted,
           endTimeFormatted: dashStopwatch.endTimeFormatted,
           elapsedSeconds: dashStopwatch.elapsedSeconds,
@@ -2548,10 +2589,13 @@
       } else if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
         const subjectSelect = document.getElementById('stopwatchSubjectSelect');
         const notesInput = document.getElementById('stopwatchNotes');
+        const realStartTime = stopwatch.isRunning
+          ? stopwatch.startTime
+          : (stopwatch.startTime || Date.now() - stopwatch.elapsedSeconds * 1000);
         appData.activeStopwatch = {
           type: 'logger',
           isRunning: stopwatch.isRunning,
-          startTime: stopwatch.startTime,
+          startTime: realStartTime,
           startTimeFormatted: stopwatch.startTimeFormatted,
           elapsedSeconds: stopwatch.elapsedSeconds,
           subjectId: subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy'),
@@ -2572,7 +2616,9 @@
     function syncActiveStopwatchFromAppData() {
       const swState = appData.activeStopwatch;
       if (swState && swState.isRunning && swState.startTime) {
-        const elapsed = Math.floor((Date.now() - swState.startTime) / 1000) + (swState.elapsedSeconds || 0);
+        // Calculate elapsed purely from startTime - no double counting with elapsedSeconds
+        // startTime is already set as (Date.now() - elapsed*1000) when paused/resumed
+        const elapsed = Math.floor((Date.now() - swState.startTime) / 1000);
 
         if (swState.type === 'logger') {
           stopwatch.isRunning = true;
@@ -2673,11 +2719,41 @@
           if (actionsRow) actionsRow.classList.remove('hidden');
         }
       } else if (!swState) {
+        // Stopwatch cleared by another device (they saved/cancelled) — silently reset local UI without pushing to cloud
         if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
-          cancelDashStopwatch(false);
+          dashStopwatch.isRunning = false;
+          clearInterval(dashStopwatch.timerInterval);
+          dashStopwatch.elapsedSeconds = 0;
+          dashStopwatch.startTime = 0;
+          renderDashStopwatchDisplay(0);
+          const startText = document.getElementById('dashStopwatchStartTimeText');
+          const endText = document.getElementById('dashStopwatchEndTimeText');
+          const actionsRow = document.getElementById('dashStopwatchActionsRow');
+          const btn = document.getElementById('dashStopwatchBtn');
+          const btnText = document.getElementById('dashStopwatchBtnText');
+          const btnIcon = document.getElementById('dashStopwatchBtnIcon');
+          const statusBadge = document.getElementById('dashStopwatchStatusBadge');
+          const statusText = document.getElementById('dashStopwatchStatusText');
+          const statusDot = document.getElementById('dashStopwatchDot');
+          if (startText) startText.textContent = 'هنوز شروع نشده';
+          if (endText) endText.textContent = 'ـ';
+          if (actionsRow) actionsRow.classList.add('hidden');
+          if (btnText) btnText.textContent = 'استارت';
+          if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+          if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
+          if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-white/5 flex items-center gap-1';
+          if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
+          if (statusText) statusText.textContent = 'آماده شروع';
         }
         if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
-          resetStopwatch(false);
+          stopwatch.isRunning = false;
+          clearInterval(stopwatch.timerInterval);
+          stopwatch.startTime = 0;
+          stopwatch.elapsedSeconds = 0;
+          const d = document.getElementById('stopwatchDisplay');
+          if (d) d.textContent = '00:00:00';
+          updateStopwatchUI(false);
+          // Do NOT call clearActiveStopwatchFromDisk here — that would push null back to cloud
         }
       }
       if (window.lucide && lucide.createIcons) lucide.createIcons();
