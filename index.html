@@ -2038,7 +2038,7 @@
       const checkAuto = document.getElementById('checkAuto');
 
       if (checkPhone) checkPhone.classList.toggle('hidden', mode !== 'phone');
-      if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
+if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       if (checkAuto) checkAuto.classList.toggle('hidden', mode !== 'auto');
 
       if (mode === 'phone' && !isMobileScreen) {
@@ -2123,8 +2123,11 @@
       if (window.lucide && lucide.createIcons) lucide.createIcons();
     }
 
-    // --- STORAGE ENGINE & REALISTIC SAMPLE DEMO DATA ---
-    function loadDataFromStorage() {
+    // --- 🔄 CLOUD & LOCAL STORAGE ENGINE (REALTIME SYNC) ---
+    let cloudSyncTimeout = null;
+
+    async function loadDataFromStorage() {
+      // 1. First load from local storage for instant UI (0ms)
       const stored = localStorage.getItem('gemini_study_data');
       if (stored) {
         try {
@@ -2139,7 +2142,50 @@
       } else {
         injectSampleDemoData(false);
       }
+
+      // 2. Fetch latest data from Cloud Server (/api/sync) in background
+      syncFromCloud();
     }
+
+    async function syncFromCloud(silent = true) {
+      try {
+        const res = await fetch('./api/sync');
+        if (res.ok) {
+          const serverData = await res.json();
+          if (serverData && serverData.logs && Array.isArray(serverData.logs)) {
+            appData = serverData;
+            localStorage.setItem('gemini_study_data', JSON.stringify(appData));
+            renderAll();
+            if (!silent) triggerToast('همگام‌سازی ابری با موفقیت انجام شد ☁️', 'success');
+          }
+        }
+      } catch (err) {
+        console.log('Cloud sync offline or static');
+      }
+    }
+
+    function pushToCloud() {
+      if (cloudSyncTimeout) clearTimeout(cloudSyncTimeout);
+      cloudSyncTimeout = setTimeout(async () => {
+        try {
+          await fetch('./api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(appData)
+          });
+        } catch (err) {}
+      }, 400);
+    }
+
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        syncFromCloud(true);
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      syncFromCloud(true);
+    });
 
     function injectSampleDemoData(showToast = true) {
       const today = new Date();
@@ -2225,7 +2271,8 @@
 
     function saveDataToStorage(showToast = false) {
       localStorage.setItem('gemini_study_data', JSON.stringify(appData));
-      if (showToast) triggerToast('اطلاعات با موفقیت در حافظه ذخیره شد', 'success');
+      pushToCloud();
+      if (showToast) triggerToast('اطلاعات با موفقیت ذخیره و همگام شد ☁️', 'success');
     }
 
     function setupInitialInputs() {
