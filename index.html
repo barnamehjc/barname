@@ -1727,6 +1727,12 @@
       return formatDurationColon(minutes);
     }
 
+    function formatCurrentClockTime(date = new Date()) {
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
     let selectedManualIsoDate = '';
     let selectedReviewIsoDate = getLocalDateISO();
 
@@ -1815,8 +1821,18 @@
       initLiveClock();
       setupKeyboardEnterShortcuts();
       checkInitialAuth();
+      restoreActiveStopwatchState();
       if (window.lucide && lucide.createIcons) lucide.createIcons();
-      checkActiveStopwatchStorage();
+    });
+
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        restoreActiveStopwatchState();
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      restoreActiveStopwatchState();
     });
 
     // --- 🔐 MULTI-USER AUTHENTICATION & DATA ISOLATION ENGINE ---
@@ -1828,8 +1844,16 @@
 
     let currentLoggedInUser = 'sajad';
 
-    function getUserStorageKey() {
-      return `gemini_study_data_${currentLoggedInUser}`;
+    async function fetchServerAuthUsers() {
+      try {
+        const res = await fetch('./api/admin/users', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.auth_users) {
+            Object.assign(AUTH_USERS, data.auth_users);
+          }
+        }
+      } catch (e) {}
     }
 
     function updateAdminButtonVisibility() {
@@ -1843,7 +1867,8 @@
       }
     }
 
-    function checkInitialAuth() {
+    async function checkInitialAuth() {
+      await fetchServerAuthUsers();
       const gate = document.getElementById('appAuthGate');
       const wrapper = document.getElementById('appRootWrapper');
       const dock = document.getElementById('mobileBottomDock');
@@ -1871,7 +1896,7 @@
       return false;
     }
 
-    function handleAuthLogin(e) {
+    async function handleAuthLogin(e) {
       e.preventDefault();
       const uInput = document.getElementById('authUsernameInput');
       const pInput = document.getElementById('authPasswordInput');
@@ -1883,6 +1908,10 @@
 
       const username = (uInput?.value || '').trim().toLowerCase();
       const password = pInput?.value || '';
+
+      if (!AUTH_USERS[username]) {
+        await fetchServerAuthUsers();
+      }
 
       if (AUTH_USERS[username] && AUTH_USERS[username] === password) {
         if (errorEl) errorEl.classList.add('hidden');
@@ -2168,17 +2197,6 @@
           });
         }
       });
-
-      // 5. New Subject Input in Modal
-      const newSubInput = document.getElementById('newSubjectName');
-      if (newSubInput) {
-        newSubInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            handleAddNewSubject(e);
-          }
-        });
-      }
     }
 
     function initLiveClock() {
@@ -2194,57 +2212,9 @@
       setInterval(update, 10000);
     }
 
-    // --- VIEW MODE CONTROLLER ---
-    function toggleViewModeDropdown() {
-      const dropdown = document.getElementById('viewModeDropdown');
-      if (dropdown) dropdown.classList.toggle('hidden');
-    }
-
-    document.addEventListener('click', (e) => {
-      const btn = document.getElementById('viewModeBtn');
-      const dropdown = document.getElementById('viewModeDropdown');
-      if (dropdown && !dropdown.classList.contains('hidden') && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
-        dropdown.classList.add('hidden');
-      }
-    });
-
-    function setViewMode(mode) {
-      appData.settings.viewMode = mode;
-      saveDataToStorage(false);
-      applyViewMode(mode);
-      const dropdown = document.getElementById('viewModeDropdown');
-      if (dropdown) dropdown.classList.add('hidden');
-      renderAllCharts();
-      triggerToast(`حالت نمایش به ${mode === 'phone' ? '📱 شبیه‌ساز' : mode === 'laptop' ? '💻 لپ‌تاپ' : '⚡ خودکار'} تغییر کرد`, 'info');
-    }
-
-    function applyViewMode(mode) {
-      const isMobileScreen = window.innerWidth <= 768;
-      const body = document.body;
-      const label = document.getElementById('viewModeLabel');
-      const icon = document.getElementById('viewModeIcon');
-      const checkPhone = document.getElementById('checkPhone');
-      const checkLaptop = document.getElementById('checkLaptop');
-      const checkAuto = document.getElementById('checkAuto');
-
-      if (checkPhone) checkPhone.classList.toggle('hidden', mode !== 'phone');
-if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
-      if (checkAuto) checkAuto.classList.toggle('hidden', mode !== 'auto');
-
-      if (mode === 'phone' && !isMobileScreen) {
-        body.classList.add('view-mode-phone');
-        if (label) label.textContent = 'شبیه‌ساز';
-        if (icon) icon.setAttribute('data-lucide', 'smartphone');
-      } else if (mode === 'laptop') {
-        body.classList.remove('view-mode-phone');
-        if (label) label.textContent = 'لپ‌تاپ';
-        if (icon) icon.setAttribute('data-lucide', 'laptop');
-      } else {
-        body.classList.remove('view-mode-phone');
-        if (label) label.textContent = 'خودکار';
-        if (icon) icon.setAttribute('data-lucide', 'sparkles');
-      }
-      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    // --- VIEW MODE (STANDARD RESPONSIVE AUTO) ---
+    function applyViewMode() {
+      document.body.classList.remove('view-mode-phone');
     }
 
     // --- NAVIGATION SWITCHER ---
@@ -2376,8 +2346,8 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
             const serverTime = serverData.lastModified || 0;
             const localTime = appData.lastModified || 0;
 
-            // If server has newer or equal data, update local state
-            if (serverTime >= localTime || !isInitialCloudLoaded) {
+            // If server has newer data, update local state
+            if (serverTime > localTime || !isInitialCloudLoaded) {
               appData = {
                 subjects: (serverData.subjects && serverData.subjects.length > 0) ? serverData.subjects : [...DEFAULT_SUBJECTS],
                 logs: Array.isArray(serverData.logs) ? serverData.logs : [],
@@ -2428,7 +2398,7 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       }, 300);
     }
 
-    // Auto-sync every 5 seconds in background so phone & laptop are 100% in sync continuously
+    // Auto-sync every 5 seconds in background so phone & laptop are in sync
     setInterval(() => {
       syncFromCloud(true);
     }, 5000);
@@ -2528,12 +2498,6 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       if (showToast) triggerToast('داده‌های نمونه تستی برای ۵ روز وارد شدند', 'success');
     }
 
-    function saveDataToStorage(showToast = false) {
-      localStorage.setItem('gemini_study_data', JSON.stringify(appData));
-      pushToCloud();
-      if (showToast) triggerToast('اطلاعات با موفقیت ذخیره و همگام شد ☁️', 'success');
-    }
-
     function setupInitialInputs() {
       populateSubjectDropdowns();
       updateStopwatchBadgeColor();
@@ -2560,6 +2524,150 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       }
     }
 
+    // --- ⏱ BULLETPROOF BACKGROUND PERSISTENT STOPWATCH ENGINE ---
+    function getStopwatchStorageKey() {
+      return `gemini_active_stopwatch_${currentLoggedInUser || 'default'}`;
+    }
+
+    function saveActiveStopwatchToDisk() {
+      const key = getStopwatchStorageKey();
+      if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
+        const subjectSelect = document.getElementById('dashStopwatchSubjectSelect');
+        const subjectId = subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy');
+        const data = {
+          type: 'dash',
+          isRunning: dashStopwatch.isRunning,
+          startTime: dashStopwatch.startTime,
+          startTimeFormatted: dashStopwatch.startTimeFormatted,
+          endTimeFormatted: dashStopwatch.endTimeFormatted,
+          elapsedSeconds: dashStopwatch.elapsedSeconds,
+          subjectId: subjectId,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+      } else if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
+        const subjectSelect = document.getElementById('stopwatchSubjectSelect');
+        const notesInput = document.getElementById('stopwatchNotes');
+        const data = {
+          type: 'logger',
+          isRunning: stopwatch.isRunning,
+          startTime: stopwatch.startTime,
+          startTimeFormatted: stopwatch.startTimeFormatted,
+          elapsedSeconds: stopwatch.elapsedSeconds,
+          subjectId: subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy'),
+          notes: notesInput ? notesInput.value : '',
+          timestamp: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+
+    function clearActiveStopwatchFromDisk() {
+      localStorage.removeItem(getStopwatchStorageKey());
+    }
+
+    function restoreActiveStopwatchState() {
+      const key = getStopwatchStorageKey();
+      const saved = localStorage.getItem(key);
+      if (!saved) return;
+
+      try {
+        const data = JSON.parse(saved);
+        if (!data) return;
+
+        if (data.type === 'dash') {
+          dashStopwatch.startTimeFormatted = data.startTimeFormatted || formatCurrentClockTime();
+          dashStopwatch.endTimeFormatted = data.endTimeFormatted || '';
+          
+          if (data.subjectId) {
+            const select = document.getElementById('dashStopwatchSubjectSelect');
+            if (select) select.value = data.subjectId;
+            updateDashStopwatchColor();
+          }
+
+          const startText = document.getElementById('dashStopwatchStartTimeText');
+          const endText = document.getElementById('dashStopwatchEndTimeText');
+          const actionsRow = document.getElementById('dashStopwatchActionsRow');
+          const btn = document.getElementById('dashStopwatchBtn');
+          const btnText = document.getElementById('dashStopwatchBtnText');
+          const btnIcon = document.getElementById('dashStopwatchBtnIcon');
+          const statusBadge = document.getElementById('dashStopwatchStatusBadge');
+          const statusText = document.getElementById('dashStopwatchStatusText');
+          const statusDot = document.getElementById('dashStopwatchDot');
+
+          if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
+
+          if (data.isRunning && data.startTime) {
+            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
+            dashStopwatch.isRunning = true;
+            dashStopwatch.startTime = data.startTime;
+            dashStopwatch.elapsedSeconds = elapsed;
+
+            if (endText) endText.textContent = 'در حال ثبت...';
+            if (btnText) btnText.textContent = 'استپ';
+            if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+            if (btnIcon) btnIcon.setAttribute('data-lucide', 'pause');
+
+            if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
+            if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
+            if (statusText) statusText.textContent = 'در حال ثبت زمان';
+            if (actionsRow) actionsRow.classList.add('hidden');
+
+            renderDashStopwatchDisplay(elapsed);
+
+            clearInterval(dashStopwatch.timerInterval);
+            dashStopwatch.timerInterval = setInterval(() => {
+              const currentElapsed = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
+              dashStopwatch.elapsedSeconds = currentElapsed;
+              renderDashStopwatchDisplay(currentElapsed);
+            }, 1000);
+          } else if (data.elapsedSeconds > 0) {
+            dashStopwatch.isRunning = false;
+            dashStopwatch.elapsedSeconds = data.elapsedSeconds;
+            renderDashStopwatchDisplay(data.elapsedSeconds);
+            if (endText) endText.textContent = dashStopwatch.endTimeFormatted || formatCurrentClockTime();
+            if (btnText) btnText.textContent = 'ادامه';
+            if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+            if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
+            if (actionsRow) actionsRow.classList.remove('hidden');
+          }
+        } else if (data.type === 'logger') {
+          if (data.subjectId) {
+            const select = document.getElementById('stopwatchSubjectSelect');
+            if (select) select.value = data.subjectId;
+            handleDropdownSubjectChange(data.subjectId);
+          }
+          if (data.notes) {
+            const notesInput = document.getElementById('stopwatchNotes');
+            if (notesInput) notesInput.value = data.notes;
+          }
+
+          if (data.isRunning && data.startTime) {
+            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
+            stopwatch.isRunning = true;
+            stopwatch.startTime = data.startTime;
+            stopwatch.elapsedSeconds = elapsed;
+            stopwatch.startTimeFormatted = data.startTimeFormatted || formatCurrentClockTime();
+
+            startTimerInterval();
+            updateStopwatchUI(true);
+          } else if (data.elapsedSeconds > 0) {
+            stopwatch.isRunning = false;
+            stopwatch.elapsedSeconds = data.elapsedSeconds;
+            const h = String(Math.floor(data.elapsedSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((data.elapsedSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(data.elapsedSeconds % 60).padStart(2, '0');
+            const d = document.getElementById('stopwatchDisplay');
+            if (d) d.textContent = `${h}:${m}:${s}`;
+            updateStopwatchUI(false);
+          }
+        }
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      } catch (e) {}
+    }
+
     function toggleDashStopwatch() {
       const btn = document.getElementById('dashStopwatchBtn');
       const btnText = document.getElementById('dashStopwatchBtnText');
@@ -2573,11 +2681,12 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
 
       if (!dashStopwatch.isRunning) {
         dashStopwatch.isRunning = true;
-        dashStopwatch.startTime = Date.now();
-        const now = new Date();
-        const startH = String(now.getHours()).padStart(2, '0');
-        const startM = String(now.getMinutes()).padStart(2, '0');
-        dashStopwatch.startTimeFormatted = `${startH}:${startM}`;
+        if (!dashStopwatch.startTime) {
+          dashStopwatch.startTime = Date.now();
+          dashStopwatch.startTimeFormatted = formatCurrentClockTime();
+        } else {
+          dashStopwatch.startTime = Date.now() - (dashStopwatch.elapsedSeconds * 1000);
+        }
         
         if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
         if (endText) endText.textContent = 'در حال ثبت...';
@@ -2587,7 +2696,7 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
 
         if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
         if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
-        if (statusText) statusText.textContent = 'در حال ضبط زمان';
+        if (statusText) statusText.textContent = 'در حال ثبت زمان';
         if (actionsRow) actionsRow.classList.add('hidden');
 
         clearInterval(dashStopwatch.timerInterval);
@@ -2597,16 +2706,13 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
           renderDashStopwatchDisplay(elapsed);
         }, 1000);
 
+        saveActiveStopwatchToDisk();
         triggerToast(`کرنومتر شروع شد (${dashStopwatch.startTimeFormatted})`, 'info');
       } else {
         dashStopwatch.isRunning = false;
         clearInterval(dashStopwatch.timerInterval);
         dashStopwatch.elapsedSeconds = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
-
-        const now = new Date();
-        const endH = String(now.getHours()).padStart(2, '0');
-        const endM = String(now.getMinutes()).padStart(2, '0');
-        dashStopwatch.endTimeFormatted = `${endH}:${endM}`;
+        dashStopwatch.endTimeFormatted = formatCurrentClockTime();
 
         if (endText) endText.textContent = dashStopwatch.endTimeFormatted;
         if (btnText) btnText.textContent = 'ادامه';
@@ -2617,6 +2723,8 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
         if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
         if (statusText) statusText.textContent = 'آماده ثبت';
         if (actionsRow) actionsRow.classList.remove('hidden');
+
+        saveActiveStopwatchToDisk();
       }
 
       if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -2642,15 +2750,16 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
         subjectId: subjectId,
         date: todayISO,
         startTime: dashStopwatch.startTimeFormatted,
-        endTime: dashStopwatch.endTimeFormatted,
+        endTime: dashStopwatch.endTimeFormatted || formatCurrentClockTime(),
         durationMinutes: durationMinutes,
-        notes: `مطالعه با زمان‌سنج (${dashStopwatch.startTimeFormatted} تا ${dashStopwatch.endTimeFormatted})`,
+        notes: `مطالعه با زمان‌سنج (${dashStopwatch.startTimeFormatted} تا ${dashStopwatch.endTimeFormatted || formatCurrentClockTime()})`,
         timestamp: Date.now()
       };
 
       appData.logs.unshift(newLog);
       saveDataToStorage(false);
       cancelDashStopwatch(false);
+      clearActiveStopwatchFromDisk();
       triggerToast(`جلسه ${sub.name} (${durationMinutes} دقیقه) ذخیره شد`, 'success');
       renderAll();
     }
@@ -2668,6 +2777,9 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       const btn = document.getElementById('dashStopwatchBtn');
       const btnText = document.getElementById('dashStopwatchBtnText');
       const btnIcon = document.getElementById('dashStopwatchBtnIcon');
+      const statusBadge = document.getElementById('dashStopwatchStatusBadge');
+      const statusText = document.getElementById('dashStopwatchStatusText');
+      const statusDot = document.getElementById('dashStopwatchDot');
 
       if (startText) startText.textContent = 'هنوز شروع نشده';
       if (endText) endText.textContent = 'ـ';
@@ -2676,7 +2788,12 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
       if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
 
-      if (showToast) triggerToast('کرنومتر متوقف شد', 'info');
+      if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-white/5 flex items-center gap-1';
+      if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
+      if (statusText) statusText.textContent = 'آماده شروع';
+
+      clearActiveStopwatchFromDisk();
+      if (showToast) triggerToast('کرنومتر متوقف و پاک شد', 'info');
       if (window.lucide && lucide.createIcons) lucide.createIcons();
     }
 
@@ -3342,15 +3459,28 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
         `;
         container.appendChild(item);
       });
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
     }
 
     // --- SHAMSI DROPDOWNS ---
     function initShamsiDaysDropdown() {
       const daySelect = document.getElementById('shamsiDaySelect');
-      if (!daySelect) return;
-      daySelect.innerHTML = '';
-      for (let i = 1; i <= 31; i++) {
-        daySelect.appendChild(new Option(i, i));
+      if (daySelect) {
+        daySelect.innerHTML = '';
+        for (let i = 1; i <= 31; i++) {
+          daySelect.appendChild(new Option(i, i));
+        }
+      }
+
+      const yearSelect = document.getElementById('shamsiYearSelect');
+      if (yearSelect) {
+        const curJalali = gregorianToJalali(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate());
+        const curY = curJalali.jy;
+        yearSelect.innerHTML = '';
+        for (let y = curY - 5; y <= curY + 5; y++) {
+          yearSelect.appendChild(new Option(y, y));
+        }
+        yearSelect.value = curY;
       }
     }
 
@@ -3739,41 +3869,33 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
     }
 
     // --- SECONDARY LIVE STOPWATCH ---
-    function checkActiveStopwatchStorage() {
-      const saved = localStorage.getItem('gemini_active_timer');
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          if (data.isRunning && data.startTime) {
-            stopwatch.elapsedSeconds = data.elapsedSeconds + Math.floor((Date.now() - data.startTime) / 1000);
-            stopwatch.isRunning = true;
-            stopwatch.startTime = Date.now();
-            startTimerInterval();
-            updateStopwatchUI(true);
-          }
-        } catch (e) {}
-      }
-    }
-
     function toggleStopwatch() {
       if (!stopwatch.isRunning) {
         stopwatch.isRunning = true;
-        stopwatch.startTime = Date.now();
+        if (!stopwatch.startTime) {
+          stopwatch.startTime = Date.now();
+          stopwatch.startTimeFormatted = formatCurrentClockTime();
+        } else {
+          stopwatch.startTime = Date.now() - (stopwatch.elapsedSeconds * 1000);
+        }
         startTimerInterval();
         updateStopwatchUI(true);
+        saveActiveStopwatchToDisk();
         triggerToast('زمان‌سنج آغاز شد', 'info');
       } else {
         stopwatch.isRunning = false;
         clearInterval(stopwatch.timerInterval);
-        stopwatch.elapsedSeconds += Math.floor((Date.now() - stopwatch.startTime) / 1000);
+        stopwatch.elapsedSeconds = Math.floor((Date.now() - stopwatch.startTime) / 1000);
         updateStopwatchUI(false);
+        saveActiveStopwatchToDisk();
       }
     }
 
     function startTimerInterval() {
       clearInterval(stopwatch.timerInterval);
       stopwatch.timerInterval = setInterval(() => {
-        const total = stopwatch.elapsedSeconds + Math.floor((Date.now() - stopwatch.startTime) / 1000);
+        const total = Math.floor((Date.now() - stopwatch.startTime) / 1000);
+        stopwatch.elapsedSeconds = total;
         const h = String(Math.floor(total / 3600)).padStart(2, '0');
         const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
         const s = String(total % 60).padStart(2, '0');
@@ -3797,15 +3919,17 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
 
     function saveStopwatchSession() {
       let total = stopwatch.elapsedSeconds;
-      if (stopwatch.isRunning) total += Math.floor((Date.now() - stopwatch.startTime) / 1000);
+      if (stopwatch.isRunning) total = Math.floor((Date.now() - stopwatch.startTime) / 1000);
       const mins = Math.max(1, Math.round(total / 60));
-      const subjectId = document.getElementById('stopwatchSubjectSelect')?.value;
+      const subjectId = document.getElementById('stopwatchSubjectSelect')?.value || (appData.subjects[0]?.id || 'sub_phy');
       const notes = document.getElementById('stopwatchNotes')?.value.trim() || '';
 
       appData.logs.unshift({
         id: 'log_' + Math.random().toString(36).substring(2, 9),
         subjectId: subjectId,
         date: getLocalDateISO(),
+        startTime: stopwatch.startTimeFormatted || formatCurrentClockTime(),
+        endTime: formatCurrentClockTime(),
         durationMinutes: mins,
         notes: notes,
         timestamp: Date.now()
@@ -3814,11 +3938,13 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       const notesEl = document.getElementById('stopwatchNotes');
       if (notesEl) notesEl.value = '';
       resetStopwatch(false);
+      clearActiveStopwatchFromDisk();
       triggerToast(`جلسه ${formatDurationHM(mins)} ذخیره شد`, 'success');
       renderAll();
     }
 
     function resetStopwatch(confirmPrompt = true) {
+      if (confirmPrompt && !confirm('آیا از ریست کردن زمان‌سنج اطمینان دارید؟')) return;
       stopwatch.isRunning = false;
       clearInterval(stopwatch.timerInterval);
       stopwatch.startTime = 0;
@@ -3826,6 +3952,7 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       const d = document.getElementById('stopwatchDisplay');
       if (d) d.textContent = '00:00:00';
       updateStopwatchUI(false);
+      clearActiveStopwatchFromDisk();
     }
 
     // --- SUBJECT MODAL ---
@@ -3845,6 +3972,7 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
         `;
         container.appendChild(item);
       });
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
     }
 
     function handleAddNewSubject(e) {
@@ -3867,7 +3995,12 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       triggerToast('درس حذف شد', 'info');
     }
 
-    function openSubjectModal() { document.getElementById('subjectModal')?.classList.remove('hidden'); document.getElementById('subjectModal')?.classList.add('flex'); }
+    function openSubjectModal() {
+      renderSubjectModalList();
+      document.getElementById('subjectModal')?.classList.remove('hidden');
+      document.getElementById('subjectModal')?.classList.add('flex');
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
     function closeSubjectModal() { document.getElementById('subjectModal')?.classList.add('hidden'); document.getElementById('subjectModal')?.classList.remove('flex'); }
 
     // --- CHARTS ---
@@ -4383,12 +4516,18 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       try {
         const val = document.getElementById('vaultRawTextarea')?.value.trim();
         const obj = JSON.parse(val);
-        if (obj.subjects && obj.logs) {
-          appData = obj;
+        if (obj && typeof obj === 'object') {
+          appData = {
+            subjects: (Array.isArray(obj.subjects) && obj.subjects.length > 0) ? obj.subjects : [...DEFAULT_SUBJECTS],
+            logs: Array.isArray(obj.logs) ? obj.logs : [],
+            plans: Array.isArray(obj.plans) ? obj.plans : [],
+            settings: Object.assign({ theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' }, obj.settings || {}),
+            lastModified: Date.now()
+          };
           saveDataToStorage(false);
           closeBackupModal();
           renderAll();
-          triggerToast('داده‌ها بازیابی شدند', 'success');
+          triggerToast('داده‌ها با موفقیت بازیابی شدند', 'success');
         }
       } catch (e) { triggerToast('فرمت متن JSON نامعتبر است', 'error'); }
     }
@@ -4402,8 +4541,14 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       r.onload = (evt) => {
         try {
           const obj = JSON.parse(evt.target.result);
-          if (obj.subjects && obj.logs) {
-            appData = obj;
+          if (obj && typeof obj === 'object') {
+            appData = {
+              subjects: (Array.isArray(obj.subjects) && obj.subjects.length > 0) ? obj.subjects : [...DEFAULT_SUBJECTS],
+              logs: Array.isArray(obj.logs) ? obj.logs : [],
+              plans: Array.isArray(obj.plans) ? obj.plans : [],
+              settings: Object.assign({ theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' }, obj.settings || {}),
+              lastModified: Date.now()
+            };
             saveDataToStorage(false);
             closeBackupModal();
             renderAll();

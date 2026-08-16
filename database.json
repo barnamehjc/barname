@@ -3,11 +3,13 @@
     "sajad": {
       "logs": [
         {
-          "id": "sajad_log_1",
-          "notes": "Sajad Physics"
+          "id": "audit_test_1",
+          "notes": "Audit Test Entry",
+          "durationMinutes": 45
         }
       ],
-      "lastServerSync": 1786889361338
+      "lastModified": 1786896766881,
+      "lastServerSync": 1786896766916
     },
     "test": {
       "logs": [
