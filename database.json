@@ -1,0 +1,40 @@
+{
+  "users": {
+    "sajad": {
+      "logs": [
+        {
+          "id": "sajad_log_1",
+          "notes": "Sajad Physics"
+        }
+      ],
+      "lastServerSync": 1786889361338
+    },
+    "test": {
+      "logs": [
+        {
+          "id": "test_log_1",
+          "notes": "Test User Chemistry"
+        },
+        {
+          "id": "test_log_2",
+          "notes": "Test User Math"
+        }
+      ],
+      "lastServerSync": 1786889361343
+    },
+    "test2": {
+      "logs": [
+        {
+          "id": "test2_log_1",
+          "notes": "Test2 Biology"
+        }
+      ],
+      "lastServerSync": 1786889361344
+    }
+  },
+  "auth_users": {
+    "sajad": "sajad2009",
+    "test": "test",
+    "test2": "test2"
+  }
+}

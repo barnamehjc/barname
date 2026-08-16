@@ -473,58 +473,18 @@
     <header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-200/80 dark:border-white/5 bg-white/80 dark:bg-[#090d16]/80 backdrop-blur-md transition-colors">
       <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
         
-        <!-- Brand Logo -->
-        <button onclick="switchMainSection('dashboard')" class="flex items-center gap-2 sm:gap-3 text-right group min-w-0">
-          <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-[1px] shadow-glow-sm flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+        <!-- Brand Logo (Clean 11 Badge) -->
+        <button onclick="switchMainSection('dashboard')" class="flex items-center justify-center group flex-shrink-0" title="داشبورد اصلی">
+          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-[1px] shadow-glow-sm flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
             <div class="w-full h-full bg-white dark:bg-slate-900 rounded-[15px] flex items-center justify-center">
               <span class="text-base sm:text-xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-tr from-indigo-600 to-cyan-500">11</span>
             </div>
           </div>
-          <div class="truncate">
-            <div class="flex items-center gap-1.5">
-              <h1 class="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">برنامه درسی <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-cyan-500">یازدهم</span></h1>
-              <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 dark:border-indigo-500/30 font-mono">پایه 11</span>
-            </div>
-            <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hidden sm:block">سامانه جامع مطالعه و تحلیل تست (۱۰۰٪ کلاینت‌ساید و آفلاین)</p>
-          </div>
         </button>
 
-        <!-- Header Actions -->
+        <!-- Header Actions (5 Compact Perfectly Spaced Action Buttons) -->
         <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           
-          <!-- View Mode Selector -->
-          <div class="relative">
-            <button id="viewModeBtn" onclick="toggleViewModeDropdown()" title="تغییر حالت نمایش (گوشی / لپ‌تاپ / خودکار)" class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1 transition-all shadow-sm">
-              <i id="viewModeIcon" data-lucide="smartphone" class="w-4 h-4"></i>
-              <span id="viewModeLabel" class="hidden md:inline text-[11px]">حالت نمایش</span>
-              <i data-lucide="chevron-down" class="w-3 h-3 opacity-70"></i>
-            </button>
-
-            <div id="viewModeDropdown" class="hidden absolute left-0 mt-2 w-52 rounded-2xl glass-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl p-1.5 z-50 space-y-1 text-xs">
-              <button onclick="setViewMode('auto')" class="w-full px-3 py-2 rounded-xl flex items-center justify-between text-right hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors">
-                <span class="flex items-center gap-2 font-bold">
-                  <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
-                  <span>⚡ حالت خودکار (استاندارد)</span>
-                </span>
-                <span id="checkAuto" class="text-indigo-500 hidden">✓</span>
-              </button>
-              <button onclick="setViewMode('laptop')" class="w-full px-3 py-2 rounded-xl flex items-center justify-between text-right hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors">
-                <span class="flex items-center gap-2 font-bold">
-                  <i data-lucide="laptop" class="w-4 h-4 text-cyan-500"></i>
-                  <span>💻 حالت لپ‌تاپ (عریض)</span>
-                </span>
-                <span id="checkLaptop" class="text-indigo-500 hidden">✓</span>
-              </button>
-              <button onclick="setViewMode('phone')" class="w-full px-3 py-2 rounded-xl flex items-center justify-between text-right hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors border-t border-slate-200 dark:border-white/5">
-                <span class="flex items-center gap-2 font-bold">
-                  <i data-lucide="smartphone" class="w-4 h-4 text-indigo-500"></i>
-                  <span>📱 شبیه‌ساز (تست روی لپ‌تاپ)</span>
-                </span>
-                <span id="checkPhone" class="text-indigo-500 hidden">✓</span>
-              </button>
-            </div>
-          </div>
-
           <!-- PWA Install Button -->
           <button onclick="openInstallGuideModal()" title="راهنمای نصب روی گوشی، آیفون، مک و ویندوز" class="p-2 sm:px-2.5 sm:py-2 text-xs font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 transition-all shadow-sm">
             <i data-lucide="download-cloud" class="w-4 h-4"></i>
@@ -545,6 +505,11 @@
           <!-- Subjects Manager -->
           <button onclick="openSubjectModal()" title="مدیریت دروس" class="p-2 sm:px-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 flex items-center gap-1 transition-all shadow-sm">
             <i data-lucide="book-open" class="w-4 h-4 text-indigo-500"></i>
+          </button>
+
+          <!-- Admin Users Manager (Only visible when logged in as sajad) -->
+          <button id="adminUsersBtn" onclick="openAdminUsersModal()" title="مدیریت کاربران (پنل ادمین)" class="hidden p-2 sm:px-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1 transition-all shadow-sm">
+            <i data-lucide="users" class="w-4 h-4 text-purple-500"></i>
           </button>
 
           <!-- Lock / Logout Button -->
@@ -1445,6 +1410,50 @@
 
   <!-- ==================== MODALS ==================== -->
 
+  <!-- Modal 0: Admin User Management Panel (Exclusive to sajad) -->
+  <div id="adminUsersModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-black text-slate-900 dark:text-white">پنل مدیریت کاربران (ادمین)</h3>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">افزودن، مشاهده و حذف حساب‌های کاربری مستقل</p>
+          </div>
+        </div>
+        <button onclick="closeAdminUsersModal()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <!-- Add New User Form -->
+      <form onsubmit="handleAdminCreateUser(event)" class="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2.5">
+        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block">➕ ایجاد حساب کاربری جدید:</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input type="text" id="adminNewUsernameInput" placeholder="نام کاربری (مثلاً ali)" required class="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-left font-mono" dir="ltr" />
+          <input type="text" id="adminNewPasswordInput" placeholder="رمز عبور (مثلاً ali123)" required class="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-left font-mono" dir="ltr" />
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 text-white font-bold text-xs shadow-glow-sm flex items-center justify-center gap-1.5 transition-all">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          <span>ایجاد و ثبت حساب کاربری در سرور</span>
+        </button>
+      </form>
+
+      <!-- Users List -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-600 dark:text-slate-400">لیست حساب‌های کاربری فعال:</span>
+          <span id="adminUsersCountBadge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">3 کاربر</span>
+        </div>
+        <div id="adminUsersListContainer" class="max-h-60 overflow-y-auto space-y-2 pr-1"></div>
+      </div>
+
+      <div class="pt-2 text-left border-t border-slate-200 dark:border-white/5">
+        <button onclick="closeAdminUsersModal()" class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">بستن</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal 1: PWA Installation Guide Modal -->
   <div id="installGuideModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
     <div class="glass-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -1810,11 +1819,29 @@
       checkActiveStopwatchStorage();
     });
 
-    // --- 🔐 AUTHENTICATION & SECURITY ENGINE ---
-    const AUTH_CONFIG = {
-      username: 'sajad',
-      password: 'sajad2009'
+    // --- 🔐 MULTI-USER AUTHENTICATION & DATA ISOLATION ENGINE ---
+    const AUTH_USERS = {
+      'sajad': 'sajad2009',
+      'test': 'test',
+      'test2': 'test2'
     };
+
+    let currentLoggedInUser = 'sajad';
+
+    function getUserStorageKey() {
+      return `gemini_study_data_${currentLoggedInUser}`;
+    }
+
+    function updateAdminButtonVisibility() {
+      const adminBtn = document.getElementById('adminUsersBtn');
+      if (adminBtn) {
+        if (currentLoggedInUser === 'sajad') {
+          adminBtn.classList.remove('hidden');
+        } else {
+          adminBtn.classList.add('hidden');
+        }
+      }
+    }
 
     function checkInitialAuth() {
       const gate = document.getElementById('appAuthGate');
@@ -1825,10 +1852,13 @@
       if (session) {
         try {
           const authData = JSON.parse(session);
-          if (authData && authData.authenticated && authData.user === AUTH_CONFIG.username) {
+          if (authData && authData.authenticated && authData.user && AUTH_USERS[authData.user.toLowerCase()]) {
+            currentLoggedInUser = authData.user.toLowerCase();
             if (gate) gate.classList.add('hidden');
             if (wrapper) wrapper.classList.remove('hidden');
             if (dock) dock.classList.remove('hidden');
+            updateAdminButtonVisibility();
+            loadDataFromStorage();
             return true;
           }
         } catch (e) {}
@@ -1854,14 +1884,15 @@
       const username = (uInput?.value || '').trim().toLowerCase();
       const password = pInput?.value || '';
 
-      if (username === AUTH_CONFIG.username && password === AUTH_CONFIG.password) {
+      if (AUTH_USERS[username] && AUTH_USERS[username] === password) {
         if (errorEl) errorEl.classList.add('hidden');
+        currentLoggedInUser = username;
 
         // Store session if remember me is active
         if (rememberMe) {
           const sessionData = {
             authenticated: true,
-            user: AUTH_CONFIG.username,
+            user: username,
             token: 'auth_' + Date.now() + '_' + Math.random().toString(36).substring(2),
             timestamp: Date.now()
           };
@@ -1881,8 +1912,10 @@
         if (wrapper) wrapper.classList.remove('hidden');
         if (dock) dock.classList.remove('hidden');
 
-        renderAll();
-        triggerToast('خوش آمدید سجاد عزیز 🌟', 'success');
+        updateAdminButtonVisibility();
+        // Load isolated user data
+        loadDataFromStorage();
+        triggerToast(`خوش آمدید کاربر ${username} 🌟`, 'success');
       } else {
         if (errorEl) {
           errorEl.textContent = 'نام کاربری یا رمز عبور اشتباه است!';
@@ -1897,19 +1930,176 @@
     }
 
     function handleAppLogout() {
-      if (confirm('آیا قصد قفل کردن برنامه و خروج از حساب را دارید؟')) {
+      if (confirm('آیا قصد خروج از حساب کاربری و قفل برنامه را دارید؟')) {
         localStorage.removeItem('gemini_auth_session');
         const gate = document.getElementById('appAuthGate');
         const wrapper = document.getElementById('appRootWrapper');
         const dock = document.getElementById('mobileBottomDock');
         const pInput = document.getElementById('authPasswordInput');
+        const uInput = document.getElementById('authUsernameInput');
 
         if (gate) gate.classList.remove('hidden');
         if (wrapper) wrapper.classList.add('hidden');
         if (dock) dock.classList.add('hidden');
         if (pInput) pInput.value = '';
+        if (uInput) uInput.value = '';
 
-        triggerToast('برنامه قفل شد', 'info');
+        updateAdminButtonVisibility();
+        triggerToast('از حساب کاربری خارج شدید', 'info');
+      }
+    }
+
+    // --- 👑 ADMIN USER MANAGEMENT LOGIC ---
+    function openAdminUsersModal() {
+      if (currentLoggedInUser !== 'sajad') {
+        triggerToast('دسترسی به این بخش فقط برای ادمین مجاز است', 'error');
+        return;
+      }
+      const modal = document.getElementById('adminUsersModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        fetchAndRenderAdminUsers();
+      }
+    }
+
+    function closeAdminUsersModal() {
+      const modal = document.getElementById('adminUsersModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function fetchAndRenderAdminUsers() {
+      const container = document.getElementById('adminUsersListContainer');
+      const countBadge = document.getElementById('adminUsersCountBadge');
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="py-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+          <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-purple-500"></i>
+          <span>در حال دریافت لیست کاربران...</span>
+        </div>
+      `;
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+      try {
+        const res = await fetch('./api/admin/users');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.auth_users) {
+            Object.assign(AUTH_USERS, data.auth_users);
+          }
+          const usersList = (data && data.users) ? data.users : Object.keys(AUTH_USERS).map(u => ({ username: u, isAdmin: (u === 'sajad'), logsCount: 0 }));
+          
+          if (countBadge) countBadge.textContent = `${usersList.length} کاربر`;
+          container.innerHTML = '';
+
+          usersList.forEach(userItem => {
+            const u = userItem.username;
+            const isAdmin = (u === 'sajad');
+            const pwd = (data.auth_users && data.auth_users[u]) || AUTH_USERS[u] || '••••';
+            
+            const card = document.createElement('div');
+            card.className = `p-3 rounded-2xl border flex items-center justify-between gap-2 text-xs transition-all ${isAdmin ? 'bg-purple-500/10 border-purple-500/30' : 'bg-slate-100/90 dark:bg-slate-950/70 border-slate-200 dark:border-white/5'}`;
+            
+            card.innerHTML = `
+              <div class="flex items-center gap-2.5 truncate flex-1">
+                <div class="w-8 h-8 rounded-xl ${isAdmin ? 'bg-purple-500/20 text-purple-500' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'} flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="${isAdmin ? 'crown' : 'user'}" class="w-4 h-4"></i>
+                </div>
+                <div class="truncate">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-black text-slate-900 dark:text-white font-mono text-sm">${u}</span>
+                    ${isAdmin ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400">ادمین اصلی</span>` : `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500">کاربر مستقل</span>`}
+                  </div>
+                  <div class="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                    <span>رمز: <strong class="text-slate-700 dark:text-slate-300">${pwd}</strong></span>
+                    ${userItem.logsCount > 0 ? `<span>• ${userItem.logsCount} پارت</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                ${!isAdmin ? `
+                  <button type="button" onclick="handleAdminDeleteUser('${u}')" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-colors" title="حذف این کاربر و اطلاعات او">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                ` : `
+                  <span class="text-[10px] text-slate-400 px-2 py-1 bg-slate-200 dark:bg-slate-800/80 rounded-lg">محافظت‌شده</span>
+                `}
+              </div>
+            `;
+            container.appendChild(card);
+          });
+          if (window.lucide && lucide.createIcons) lucide.createIcons();
+        }
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-rose-500 p-3 text-center">خطا در دریافت لیست کاربران</p>`;
+      }
+    }
+
+    async function handleAdminCreateUser(e) {
+      e.preventDefault();
+      const uInput = document.getElementById('adminNewUsernameInput');
+      const pInput = document.getElementById('adminNewPasswordInput');
+      const username = (uInput?.value || '').trim().toLowerCase();
+      const password = (pInput?.value || '').trim();
+
+      if (!username || !password) {
+        triggerToast('نام کاربری و رمز عبور الزامی است', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('./api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          AUTH_USERS[username] = password;
+          if (uInput) uInput.value = '';
+          if (pInput) pInput.value = '';
+          triggerToast(`کاربر ${username} با موفقیت ایجاد شد 🎉`, 'success');
+          fetchAndRenderAdminUsers();
+        } else {
+          triggerToast(result.error || 'خطا در ایجاد کاربر', 'error');
+        }
+      } catch (err) {
+        triggerToast('خطا در ارتباط با سرور', 'error');
+      }
+    }
+
+    async function handleAdminDeleteUser(username) {
+      if (username === 'sajad') {
+        triggerToast('امکان حذف ادمین اصلی وجود ندارد', 'error');
+        return;
+      }
+
+      if (!confirm(`آیا از حذف کامل حساب کاربری "${username}" و پاک‌سازی تمام اطلاعات و سوابق آن اطمینان دارید؟`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch('./api/admin/users', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          delete AUTH_USERS[username];
+          localStorage.removeItem(`gemini_study_data_${username}`);
+          triggerToast(`کاربر ${username} با موفقیت حذف شد`, 'info');
+          fetchAndRenderAdminUsers();
+        } else {
+          triggerToast(result.error || 'خطا در حذف کاربر', 'error');
+        }
+      } catch (err) {
+        triggerToast('خطا در ارتباط با سرور', 'error');
       }
     }
 
@@ -2123,59 +2313,125 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
       if (window.lucide && lucide.createIcons) lucide.createIcons();
     }
 
-    // --- 🔄 CLOUD & LOCAL STORAGE ENGINE (REALTIME SYNC) ---
+    // --- 🔄 BULLETPROOF MULTI-USER CLOUD & LOCAL STORAGE ENGINE ---
     let cloudSyncTimeout = null;
+    let isInitialCloudLoaded = false;
+
+    function getUserStorageKey() {
+      return `gemini_study_data_${currentLoggedInUser || 'default'}`;
+    }
 
     async function loadDataFromStorage() {
-      // 1. First load from local storage for instant UI (0ms)
-      const stored = localStorage.getItem('gemini_study_data');
-      if (stored) {
-        try {
-          appData = JSON.parse(stored);
-          if (!appData.subjects || appData.subjects.length === 0) appData.subjects = [...DEFAULT_SUBJECTS];
-          if (!appData.logs || appData.logs.length === 0) injectSampleDemoData(false);
-          if (!appData.plans) appData.plans = [];
-          if (!appData.settings) appData.settings = { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' };
-        } catch (e) {
-          injectSampleDemoData(false);
-        }
-      } else {
-        injectSampleDemoData(false);
+      if (!currentLoggedInUser) return;
+      const storageKey = getUserStorageKey();
+      
+      let stored = localStorage.getItem(storageKey);
+      if (!stored && currentLoggedInUser === 'sajad') {
+        stored = localStorage.getItem('gemini_study_data');
       }
 
-      // 2. Fetch latest data from Cloud Server (/api/sync) in background
-      syncFromCloud();
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            appData = {
+              subjects: (parsed.subjects && parsed.subjects.length > 0) ? parsed.subjects : [...DEFAULT_SUBJECTS],
+              logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+              plans: Array.isArray(parsed.plans) ? parsed.plans : [],
+              settings: parsed.settings || { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
+              lastModified: parsed.lastModified || 0
+            };
+          }
+        } catch (e) {
+          appData = {
+            subjects: [...DEFAULT_SUBJECTS],
+            logs: [],
+            plans: [],
+            settings: { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
+            lastModified: 0
+          };
+        }
+      } else {
+        // Clean blank account for this user (0 fake data)
+        appData = {
+          subjects: [...DEFAULT_SUBJECTS],
+          logs: [],
+          plans: [],
+          settings: { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
+          lastModified: 0
+        };
+      }
+
+      // 2. Fetch authoritative cloud state from server (/api/sync)
+      await syncFromCloud(true);
     }
 
     async function syncFromCloud(silent = true) {
+      if (!currentLoggedInUser) return;
       try {
-        const res = await fetch('./api/sync');
+        const res = await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}`, { cache: 'no-store' });
         if (res.ok) {
           const serverData = await res.json();
-          if (serverData && serverData.logs && Array.isArray(serverData.logs)) {
-            appData = serverData;
-            localStorage.setItem('gemini_study_data', JSON.stringify(appData));
-            renderAll();
-            if (!silent) triggerToast('همگام‌سازی ابری با موفقیت انجام شد ☁️', 'success');
+          if (serverData && serverData.exists !== false && Array.isArray(serverData.logs)) {
+            const serverTime = serverData.lastModified || 0;
+            const localTime = appData.lastModified || 0;
+
+            // If server has newer or equal data, update local state
+            if (serverTime >= localTime || !isInitialCloudLoaded) {
+              appData = {
+                subjects: (serverData.subjects && serverData.subjects.length > 0) ? serverData.subjects : [...DEFAULT_SUBJECTS],
+                logs: Array.isArray(serverData.logs) ? serverData.logs : [],
+                plans: Array.isArray(serverData.plans) ? serverData.plans : [],
+                settings: serverData.settings || appData.settings,
+                lastModified: serverTime
+              };
+              localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
+              isInitialCloudLoaded = true;
+              renderAll();
+              if (!silent) triggerToast(`همگام‌سازی ابری انجام شد ☁️`, 'success');
+            } else if (localTime > serverTime) {
+              // Local has newer changes, push to cloud
+              pushToCloud();
+            }
+          } else if (serverData && serverData.exists === false && (appData.logs.length > 0 || appData.plans.length > 0)) {
+            // First time server is empty but local has data: upload local to server
+            pushToCloud();
           }
+          isInitialCloudLoaded = true;
         }
       } catch (err) {
         console.log('Cloud sync offline or static');
       }
     }
 
+    function saveDataToStorage(showToast = false) {
+      if (!currentLoggedInUser) return;
+      appData.lastModified = Date.now();
+      localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
+      pushToCloud();
+      if (showToast) triggerToast('اطلاعات با موفقیت ذخیره و همگام شد ☁️', 'success');
+    }
+
     function pushToCloud() {
+      if (!currentLoggedInUser) return;
       if (cloudSyncTimeout) clearTimeout(cloudSyncTimeout);
       cloudSyncTimeout = setTimeout(async () => {
         try {
-          await fetch('./api/sync', {
+          appData.lastModified = appData.lastModified || Date.now();
+          const payload = Object.assign({}, appData, { auth_user: currentLoggedInUser });
+          await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(appData)
+            body: JSON.stringify(payload)
           });
         } catch (err) {}
-      }, 400);
+      }, 300);
     }
+
+    // Auto-sync every 5 seconds in background so phone & laptop are 100% in sync continuously
+    setInterval(() => {
+      syncFromCloud(true);
+    }, 5000);
 
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
@@ -2188,6 +2444,9 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
     });
 
     function injectSampleDemoData(showToast = true) {
+      if (showToast && !confirm('آیا مایلید داده‌های تستی نمونه برای بررسی چیدمان وارد شوند؟ (این داده‌ها جایگزین داده‌های فعلی می‌شوند)')) {
+        return;
+      }
       const today = new Date();
       const formatISO = (offsetDays) => {
         const d = new Date(today);
@@ -2873,7 +3132,34 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
     function renderDailyReviewSubjectAccordions(dayLogs, dayPlans) {
       const container = document.getElementById('revSubjectsAccordionContainer');
       if (!container) return;
-      const activeSubjectIds = Array.from(new Set([...dayLogs.map(l => l.subjectId), ...dayPlans.map(p => p.subjectId)]));
+
+      // Check for live active running stopwatch
+      const isToday = (selectedReviewIsoDate === getLocalDateISO());
+      const isLoggerSwRunning = stopwatch.isRunning;
+      const isDashSwRunning = dashStopwatch.isRunning;
+      let activeSwSubId = null;
+      let activeSwStartTime = '';
+      let activeSwElapsedSec = 0;
+      let activeSwNotes = '';
+
+      if (isToday) {
+        if (isLoggerSwRunning) {
+          activeSwSubId = document.getElementById('stopwatchSubjectSelect')?.value;
+          activeSwStartTime = stopwatch.startTimeFormatted || 'اکنون';
+          activeSwElapsedSec = stopwatch.elapsedSeconds;
+          activeSwNotes = document.getElementById('stopwatchNotes')?.value || 'مطالعه با کرنومتر';
+        } else if (isDashSwRunning) {
+          activeSwSubId = document.getElementById('dashStopwatchSubjectSelect')?.value;
+          activeSwStartTime = dashStopwatch.startTimeFormatted || 'اکنون';
+          activeSwElapsedSec = dashStopwatch.elapsedSeconds;
+          activeSwNotes = 'مطالعه با کرنومتر سریع';
+        }
+      }
+
+      let activeSubjectIds = Array.from(new Set([...dayLogs.map(l => l.subjectId), ...dayPlans.map(p => p.subjectId)]));
+      if (activeSwSubId && !activeSubjectIds.includes(activeSwSubId)) {
+        activeSubjectIds.unshift(activeSwSubId);
+      }
 
       const countBadge = document.getElementById('revSubjectsCountBadge');
       if (countBadge) countBadge.textContent = `${activeSubjectIds.length} درس`;
@@ -2894,7 +3180,9 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
         const sub = appData.subjects.find(s => s.id === subId) || { name: 'درس', color: '#6366f1' };
         const subLogs = dayLogs.filter(l => l.subjectId === subId);
         const subPlans = dayPlans.filter(p => p.subjectId === subId);
-        const subMinutes = subLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
+        const isThisSubLiveSw = (isToday && activeSwSubId === subId);
+        const liveExtraMinutes = isThisSubLiveSw ? Math.floor(activeSwElapsedSec / 60) : 0;
+        const subMinutes = subLogs.reduce((sum, l) => sum + l.durationMinutes, 0) + liveExtraMinutes;
         const subTests = subPlans.reduce((sum, p) => sum + (p.completedTests || (p.isCompleted ? p.testCount : 0)), 0);
 
         const isOpen = openDailyReviewAccordions.has(subId);
@@ -2907,14 +3195,15 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
           <!-- Accordion Header Button -->
           <div onclick="toggleDailyReviewAccordion('${subId}')" class="p-3 sm:p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors select-none">
             <div class="flex items-center gap-2.5 truncate">
-              <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${sub.color}"></span>
+              <span class="w-3 h-3 rounded-full flex-shrink-0 ${isThisSubLiveSw ? 'animate-pulse ring-2 ring-emerald-500' : ''}" style="background-color: ${sub.color}"></span>
               <span class="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">${sub.name}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">${subLogs.length} پارت</span>
+              ${isThisSubLiveSw ? `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping flex-shrink-0" title="کرنومتر فعال"></span>` : ''}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">${subLogs.length + (isThisSubLiveSw ? 1 : 0)} پارت</span>
             </div>
 
             <div class="flex items-center gap-2 flex-shrink-0">
               <div class="flex items-center gap-1.5 font-mono text-xs font-bold">
-                <span class="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20">${timeFormatted}</span>
+                <span class="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20 ${isThisSubLiveSw ? 'animate-pulse' : ''}">${timeFormatted}</span>
                 ${subTests > 0 ? `<span class="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-500/20">${subTests} تست</span>` : ''}
               </div>
               <div class="p-1 rounded-lg text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-indigo-500' : ''}">
@@ -2935,7 +3224,7 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
                       <i data-lucide="clock" class="w-3.5 h-3.5"></i>
                     </div>
                     <span class="text-xs font-bold text-slate-800 dark:text-slate-200">پارت‌های مطالعه این درس</span>
-                    <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">${subLogs.length} پارت</span>
+                    <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">${subLogs.length + (isThisSubLiveSw ? 1 : 0)} پارت</span>
                   </div>
 
                   <div class="flex items-center gap-1.5 text-slate-400">
@@ -2948,6 +3237,24 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
 
                 ${openDailyReviewSessionSections.has(subId) ? `
                   <div class="p-2.5 sm:p-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-slate-950/50 space-y-1.5">
+                    
+                    <!-- Live Active Stopwatch Part (If Running Right Now) -->
+                    ${isThisSubLiveSw ? `
+                      <div class="p-2.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/50 border border-emerald-500/40 flex items-center justify-between gap-2 text-xs shadow-sm">
+                        <div class="flex items-center gap-2 truncate flex-1">
+                          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping flex-shrink-0"></span>
+                          <span class="font-bold text-slate-800 dark:text-slate-200 truncate">${activeSwNotes}</span>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          <span class="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                            <span>${activeSwStartTime} تا ...</span>
+                          </span>
+                          <span class="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400 animate-pulse">${liveExtraMinutes}m</span>
+                        </div>
+                      </div>
+                    ` : ''}
+
                     ${subLogs.length > 0 ? `
                       <div class="space-y-1.5">
                         ${subLogs.map((log, idx) => `
@@ -2969,9 +3276,9 @@ if (checkLaptop) checkLaptop.classList.toggle('hidden', mode !== 'laptop');
                           </div>
                         `).join('')}
                       </div>
-                    ` : `
+                    ` : (!isThisSubLiveSw ? `
                       <p class="text-[11px] text-slate-400 p-2 text-center">پارت مطالعه‌ای در این روز ثبت نشده است</p>
-                    `}
+                    ` : '')}
                   </div>
                 ` : ''}
               </div>

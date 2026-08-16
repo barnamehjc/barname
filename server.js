@@ -1,4 +1,4 @@
-// High-Performance Zero-Dependency Static File & Realtime Cloud Sync Server for Railway
+// High-Performance Zero-Dependency Multi-User Realtime Cloud Sync Server with Admin Panel for Railway
 // Consumes virtually 0% CPU & ~15MB RAM so your Railway $5 credit lasts indefinitely!
 
 const http = require('http');
@@ -8,6 +8,12 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
 const DB_FILE = path.join(PUBLIC_DIR, 'database.json');
+
+const DEFAULT_AUTH_USERS = {
+  'sajad': 'sajad2009',
+  'test': 'test',
+  'test2': 'test2'
+};
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -21,10 +27,38 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-const server = http.createServer((req, res) => {
+function readDatabase() {
+  return new Promise((resolve) => {
+    fs.readFile(DB_FILE, 'utf8', (err, data) => {
+      if (err || !data) {
+        resolve({ auth_users: Object.assign({}, DEFAULT_AUTH_USERS), users: {} });
+        return;
+      }
+      try {
+        const parsed = JSON.parse(data);
+        if (!parsed.auth_users) parsed.auth_users = Object.assign({}, DEFAULT_AUTH_USERS);
+        if (!parsed.users) parsed.users = {};
+        resolve(parsed);
+      } catch (e) {
+        resolve({ auth_users: Object.assign({}, DEFAULT_AUTH_USERS), users: {} });
+      }
+    });
+  });
+}
+
+function writeDatabase(db) {
+  return new Promise((resolve, reject) => {
+    fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8', (err) => {
+      if (err) reject(err);
+      else resolve(true);
+    });
+  });
+}
+
+const server = http.createServer(async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -37,39 +71,117 @@ const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let reqPath = parsedUrl.pathname;
 
-  // --- 🔄 REALTIME CLOUD SYNC API ---
-  if (reqPath === '/api/sync') {
+  // --- 👑 ADMIN USER MANAGEMENT API ---
+  if (reqPath === '/api/admin/users') {
+    const db = await readDatabase();
+
     if (req.method === 'GET') {
-      // Read latest data from server database.json
-      fs.readFile(DB_FILE, 'utf8', (err, data) => {
-        if (err || !data) {
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
-          res.end(JSON.stringify({ exists: false }));
-          return;
-        }
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
-        res.end(data);
-      });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify({
+        success: true,
+        users: Object.keys(db.auth_users).map(u => ({
+          username: u,
+          isAdmin: (u === 'sajad'),
+          hasData: !!(db.users && db.users[u] && db.users[u].logs && db.users[u].logs.length > 0),
+          logsCount: (db.users && db.users[u] && db.users[u].logs) ? db.users[u].logs.length : 0
+        })),
+        auth_users: db.auth_users
+      }));
       return;
-    } else if (req.method === 'POST') {
-      // Save data from phone/laptop to server database.json
+    }
+
+    if (req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
-      req.on('end', () => {
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const username = (payload.username || '').trim().toLowerCase();
+          const password = (payload.password || '').trim();
+
+          if (!username || !password) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'نام کاربری و رمز عبور الزامی است' }));
+            return;
+          }
+
+          db.auth_users[username] = password;
+          if (!db.users[username]) {
+            db.users[username] = { subjects: [], logs: [], plans: [], settings: {}, lastModified: Date.now() };
+          }
+          await writeDatabase(db);
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: `کاربر ${username} با موفقیت ثبت شد`, auth_users: db.auth_users }));
+        } catch (e) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const username = (payload.username || '').trim().toLowerCase();
+
+          if (username === 'sajad') {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'حساب ادمین اصلی (sajad) قابل حذف نیست!' }));
+            return;
+          }
+
+          if (db.auth_users[username]) delete db.auth_users[username];
+          if (db.users[username]) delete db.users[username];
+          await writeDatabase(db);
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: `کاربر ${username} با موفقیت حذف شد`, auth_users: db.auth_users }));
+        } catch (e) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      });
+      return;
+    }
+  }
+
+  // --- 🔄 MULTI-USER CLOUD SYNC API ---
+  if (reqPath === '/api/sync') {
+    const username = (parsedUrl.searchParams.get('user') || 'sajad').trim().toLowerCase();
+    const db = await readDatabase();
+
+    if (req.method === 'GET') {
+      let userData = db.users[username] || null;
+      if (userData) {
+        userData.auth_users = db.auth_users;
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+        res.end(JSON.stringify(userData));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+        res.end(JSON.stringify({ exists: false, user: username, auth_users: db.auth_users }));
+      }
+      return;
+    } else if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
         try {
           const parsed = JSON.parse(body);
+          const postUser = (parsed.auth_user || username).trim().toLowerCase();
+          delete parsed.auth_user;
+          delete parsed.auth_users;
           parsed.lastServerSync = Date.now();
-          const cleanJson = JSON.stringify(parsed, null, 2);
 
-          fs.writeFile(DB_FILE, cleanJson, 'utf8', (err) => {
-            if (err) {
-              res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: false, error: err.message }));
-              return;
-            }
-            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
-            res.end(JSON.stringify({ success: true, timestamp: parsed.lastServerSync }));
-          });
+          db.users[postUser] = parsed;
+          await writeDatabase(db);
+
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+          res.end(JSON.stringify({ success: true, user: postUser, timestamp: parsed.lastServerSync }));
         } catch (err) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
@@ -106,7 +218,6 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    // Aggressive caching for static assets and Service Worker
     const cacheControl = (ext === '.html' || reqPath === '/sw.js')
       ? 'no-cache'
       : 'public, max-age=604800, immutable';
@@ -125,5 +236,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Study Tracker running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Multi-User Study Tracker with Admin Panel running on http://0.0.0.0:${PORT}`);
 });
