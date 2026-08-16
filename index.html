@@ -2616,9 +2616,8 @@
     function syncActiveStopwatchFromAppData() {
       const swState = appData.activeStopwatch;
       if (swState && swState.isRunning && swState.startTime) {
-        // Calculate elapsed purely from startTime - no double counting with elapsedSeconds
-        // startTime is already set as (Date.now() - elapsed*1000) when paused/resumed
-        const elapsed = Math.floor((Date.now() - swState.startTime) / 1000);
+        // Calculate elapsed purely from startTime. Clamp to 0 to handle clock skew between devices.
+        const elapsed = Math.max(0, Math.floor((Date.now() - swState.startTime) / 1000));
 
         if (swState.type === 'logger') {
           stopwatch.isRunning = true;
@@ -2674,7 +2673,7 @@
 
           clearInterval(dashStopwatch.timerInterval);
           dashStopwatch.timerInterval = setInterval(() => {
-            const currentElapsed = Math.floor((Date.now() - dashStopwatch.startTime) / 1000);
+            const currentElapsed = Math.max(0, Math.floor((Date.now() - dashStopwatch.startTime) / 1000));
             dashStopwatch.elapsedSeconds = currentElapsed;
             renderDashStopwatchDisplay(currentElapsed);
           }, 1000);
@@ -2826,9 +2825,10 @@
     }
 
     function renderDashStopwatchDisplay(totalSecs) {
-      const h = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
-      const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
-      const s = String(totalSecs % 60).padStart(2, '0');
+      const safeSecs = Math.max(0, Math.floor(totalSecs || 0));
+      const h = String(Math.floor(safeSecs / 3600)).padStart(2, '0');
+      const m = String(Math.floor((safeSecs % 3600) / 60)).padStart(2, '0');
+      const s = String(safeSecs % 60).padStart(2, '0');
       const el = document.getElementById('dashStopwatchTimerDisplay');
       if (el) el.textContent = `${h}:${m}:${s}`;
     }
@@ -3988,7 +3988,7 @@
     function startTimerInterval() {
       clearInterval(stopwatch.timerInterval);
       stopwatch.timerInterval = setInterval(() => {
-        const total = Math.floor((Date.now() - stopwatch.startTime) / 1000);
+        const total = Math.max(0, Math.floor((Date.now() - stopwatch.startTime) / 1000));
         stopwatch.elapsedSeconds = total;
         const h = String(Math.floor(total / 3600)).padStart(2, '0');
         const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
