@@ -3119,11 +3119,10 @@
       const activeSubjectIds = Array.from(new Set([...dayLogs.map(l => l.subjectId), ...dayPlans.map(p => p.subjectId)]));
       activeSubjectIds.forEach(id => {
         openDailyReviewAccordions.add(id);
-        openDailyReviewTargetSections.add(id);
         openDailyReviewSessionSections.add(id);
       });
       renderDailyReviewSection();
-      triggerToast('تمام بخش‌ها و پارت‌ها باز شدند', 'info');
+      triggerToast('تمام پارت‌های مطالعه دروس باز شدند', 'info');
     }
 
     function collapseAllReviewAccordions() {
@@ -3137,9 +3136,9 @@
     function toggleDailyReviewAccordion(subId) {
       if (openDailyReviewAccordions.has(subId)) {
         openDailyReviewAccordions.delete(subId);
+        openDailyReviewTargetSections.delete(subId);
       } else {
         openDailyReviewAccordions.add(subId);
-        openDailyReviewTargetSections.add(subId);
         openDailyReviewSessionSections.add(subId);
       }
       renderDailyReviewSection();

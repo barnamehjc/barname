@@ -46,13 +46,18 @@ function readDatabase() {
   });
 }
 
+let writeQueue = Promise.resolve();
+
 function writeDatabase(db) {
-  return new Promise((resolve, reject) => {
+  writeQueue = writeQueue.then(() => new Promise((resolve, reject) => {
     fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8', (err) => {
       if (err) reject(err);
       else resolve(true);
     });
+  })).catch((err) => {
+    console.error('Database write error:', err);
   });
+  return writeQueue;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -194,7 +199,13 @@ const server = http.createServer(async (req, res) => {
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
   const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
-  const filePath = path.join(PUBLIC_DIR, safePath);
+  const filePath = path.resolve(PUBLIC_DIR, '.' + path.sep + safePath);
+
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('403 Forbidden');
+    return;
+  }
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
@@ -231,6 +242,12 @@ const server = http.createServer(async (req, res) => {
     });
 
     const stream = fs.createReadStream(filePath);
+    stream.on('error', (streamErr) => {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
+      }
+    });
     stream.pipe(res);
   });
 });
