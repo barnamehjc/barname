@@ -1,15 +1,54 @@
 {
   "users": {
     "sajad": {
-      "logs": [
+      "lastDevice": "dev_laptop_111",
+      "lastModified": 1786984374664,
+      "subjects": [
         {
-          "id": "audit_test_1",
-          "notes": "Audit Test Entry",
-          "durationMinutes": 45
+          "id": "sub_che",
+          "name": "شیمی",
+          "color": "#ec4899"
+        },
+        {
+          "id": "sub_phy",
+          "name": "فیزیک",
+          "color": "#3b82f6"
         }
       ],
-      "lastModified": 1786899110896,
-      "lastServerSync": 1786899110915
+      "logs": [],
+      "plans": [
+        {
+          "id": "plan_test_001",
+          "type": "test",
+          "subjectId": "sub_phy",
+          "topic": "تست‌های شتاب ثابت",
+          "description": "کتاب میکرو گاج فصل ۱",
+          "testCount": 40,
+          "durationMinutes": 50,
+          "completedTests": 10,
+          "isCompleted": false,
+          "date": "2026-08-18",
+          "timestamp": 1786984374665
+        },
+        {
+          "id": "plan_desc_002",
+          "type": "descriptive",
+          "subjectId": "sub_che",
+          "topic": "مطالعه ساختار اتم و حل تمرین",
+          "description": "حل تمرین‌های انتهای فصل صفحه ۲۰ تا ۳۵",
+          "testCount": 15,
+          "durationMinutes": 60,
+          "completedTests": 5,
+          "isCompleted": false,
+          "date": "2026-08-17",
+          "timestamp": 1786984374665
+        }
+      ],
+      "settings": {
+        "theme": "dark"
+      },
+      "revision": 3,
+      "lastServerSync": 1786984374666
     },
     "test": {
       "logs": [

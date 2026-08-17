@@ -380,6 +380,51 @@
     html.dark .mobile-dock-btn.active {
       color: #818cf8 !important;
     }
+
+    /* ========================================================
+       🎡 COMPACT WHEEL PICKER (date selector in planner form)
+       ======================================================== */
+    .wheel-picker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      user-select: none;
+    }
+    .wheel-arrow {
+      width: 100%;
+      padding: 2px 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #6366f1;
+      font-size: 10px;
+      line-height: 1;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wheel-arrow:hover { opacity: 0.7; transform: scale(1.2); }
+    .wheel-arrow:active { transform: scale(0.9); }
+    .wheel-value {
+      font-size: 12px;
+      font-weight: 900;
+      color: #f8fafc;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 8px;
+      padding: 4px 2px;
+      text-align: center;
+      min-width: 40px;
+      font-family: monospace;
+      transition: background 0.15s;
+    }
+    html.light .wheel-value {
+      color: #1e293b;
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.25);
+    }
   </style>
 </head>
 <body class="selection:bg-indigo-500 selection:text-white">
@@ -710,7 +755,7 @@
 
             <div id="dashStopwatchSelectRow" class="flex items-center gap-2">
               <div class="relative flex-1">
-                <select id="dashStopwatchSubjectSelect" onchange="updateDashStopwatchColor()" class="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold appearance-none pr-8">
+                <select id="dashStopwatchSubjectSelect" onchange="handleDropdownSubjectChange(this)" class="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold appearance-none pr-8">
                   <!-- Populated by JS -->
                 </select>
                 <div class="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -723,6 +768,10 @@
                 <i data-lucide="play" id="dashStopwatchBtnIcon" class="w-3.5 h-3.5"></i>
                 <span id="dashStopwatchBtnText">استارت</span>
               </button>
+            </div>
+
+            <div>
+              <input type="text" id="dashStopwatchNotes" oninput="handleDashStopwatchNotesChange(this.value)" placeholder="مبحث یا یادداشت (مثلاً: تست، حل تمرین)..." class="w-full glass-input rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400" />
             </div>
 
             <!-- Direct Minimal Time Summary Box -->
@@ -781,12 +830,16 @@
     </main>
 
     <!-- ==================== 2. STUDY PLANNER SECTION ==================== -->
-    <main id="sectionPlanner" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-4 sm:mt-6 space-y-4 sm:space-y-6 hidden">
+    <main id="sectionPlanner" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-4 sm:mt-6 space-y-3 sm:space-y-6 hidden">
       
+      <!-- Top Header Bar -->
       <div class="flex items-center justify-between glass-panel p-3 px-4 sm:px-5 rounded-2xl">
         <div class="flex items-center gap-2">
           <i data-lucide="target" class="w-5 h-5 text-amber-500"></i>
-          <h2 class="text-xs sm:text-base font-bold text-slate-900 dark:text-white">بخش برنامه‌ریزی و تارگت‌های تست‌زنی</h2>
+          <div>
+            <h2 class="text-xs sm:text-base font-bold text-slate-900 dark:text-white">بخش برنامه‌ریزی و تارگت‌های مطالعه و تست</h2>
+            <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">ثبت و مدیریت تارگت‌های تستی و تشریحی برای هر روز</p>
+          </div>
         </div>
 
         <button onclick="switchMainSection('dashboard')" class="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 text-[11px] sm:text-xs font-bold flex items-center gap-1 shadow-sm">
@@ -795,21 +848,50 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+      <!-- Mobile Tab Switcher (Visible on mobile/tablet, hidden on desktop) -->
+      <div class="lg:hidden glass-panel p-1 rounded-2xl flex items-center justify-between gap-1">
+        <button type="button" id="tabPlanListBtn" onclick="switchPlannerMobileTab('list')" class="flex-1 py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-600 text-white shadow-glow-sm">
+          <i data-lucide="list-checks" class="w-3.5 h-3.5"></i>
+          <span>لیست تارگت‌ها</span>
+          <span id="tabPlanCountBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-white/20 font-mono">0</span>
+        </button>
+        <button type="button" id="tabPlanCreateBtn" onclick="switchPlannerMobileTab('create')" class="flex-1 py-2 px-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 flex items-center justify-center gap-1.5 transition-all">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+          <span>ثبت تارگت جدید</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-6 items-start">
         
-        <!-- LEFT: CREATE FORM -->
-        <div class="lg:col-span-4 glass-panel p-4 sm:p-6 rounded-3xl shadow-glow-sm space-y-3.5">
+        <!-- LEFT: CREATE FORM (hidden on mobile when 'list' tab is active, always visible on desktop) -->
+        <div id="plannerCreateCol" class="lg:col-span-4 glass-panel p-3.5 sm:p-6 rounded-3xl shadow-glow-sm space-y-3.5 hidden lg:block">
           <div class="flex items-center gap-2 pb-2.5 border-b border-slate-200 dark:border-white/5">
             <div class="p-1.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
               <i data-lucide="plus-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </div>
             <div>
-              <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">ایجاد تارگت تست جدید</h3>
-              <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">تعداد تست در زمان مشخص</p>
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">ایجاد تارگت جدید</h3>
+              <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">تستی یا تشریحی برای هر روز دلخواه</p>
             </div>
           </div>
 
           <form id="createPlanForm" onsubmit="handleCreatePlanSubmit(event)" class="space-y-3">
+            
+            <!-- Target Type Selector (تستی / تشریحی) -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">نوع تارگت:</label>
+              <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-white/5">
+                <button type="button" onclick="setPlanType('test')" id="planTypeBtn-test" class="py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-amber-500 text-white shadow-glow-sm">
+                  <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                  <span>تستی (تست‌زنی)</span>
+                </button>
+                <button type="button" onclick="setPlanType('descriptive')" id="planTypeBtn-descriptive" class="py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900">
+                  <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                  <span>تشریحی (مطالعه)</span>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">درس مورد نظر:</label>
               <div class="relative">
@@ -821,16 +903,21 @@
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">مبحث یا منبع آزمون:</label>
-              <input type="text" id="planTopicInput" placeholder="مثلاً: تست‌های حرکت با شتاب ثابت..." required class="w-full glass-input rounded-xl px-3 py-2 text-xs" />
+              <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">مبحث یا منبع آزمون / مطالعه:</label>
+              <input type="text" id="planTopicInput" placeholder="مثلاً: تست‌های حرکت با شتاب ثابت / فصل ۱ فیزیک..." required class="w-full glass-input rounded-xl px-3 py-2 text-xs" />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">توضیحات (اختیاری):</label>
+              <textarea id="planDescInput" placeholder="توضیحات بیشتر، منبع کتاب، فصل، نکات مهم..." rows="2" class="w-full glass-input rounded-xl px-3 py-2 text-xs resize-none"></textarea>
             </div>
 
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">تعداد تست هدف:</label>
+                <label id="planCountLabel" class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">تعداد تست هدف:</label>
                 <div class="relative">
                   <input type="number" id="planTestCountInput" min="1" max="500" value="40" oninput="updatePlanPaceCalculation()" required class="w-full glass-input rounded-xl px-2.5 py-2 text-center text-xs font-black text-slate-900 dark:text-white font-mono" />
-                  <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">تست</span>
+                  <span id="planUnitBadge" class="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">تست</span>
                 </div>
               </div>
 
@@ -843,51 +930,118 @@
               </div>
             </div>
 
-            <div class="bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl flex items-center justify-between text-xs">
-              <span class="text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1 text-[10px]">
+            <div id="planPaceContainer" class="bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl flex items-center justify-between text-xs transition-colors">
+              <span class="text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1 text-[10px]" id="planPaceLabelContainer">
                 <i data-lucide="gauge" class="w-3.5 h-3.5 text-amber-500"></i>
-                <span>سرعت:</span>
+                <span id="planPaceLabel">سرعت:</span>
               </span>
               <strong id="planPaceText" class="text-amber-600 dark:text-amber-400 font-black text-[10px] font-mono">75 ثانیه/تست</strong>
             </div>
 
-            <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-white font-bold text-xs shadow-glow-sm flex items-center justify-center gap-1.5 transition-all">
+            <!-- DATE SELECTOR FOR PLAN (Matching user screenshot & responsive) -->
+            <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-500"></i>
+                  <span>تاریخ تارگت:</span>
+                </label>
+                <span id="planSelectedDateBadge" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-500/20 font-mono">
+                  امروز
+                </span>
+              </div>
+
+              <!-- Quick Day Chips: امروز | فردا | ۲ روز بعد | ۳ روز بعد -->
+              <div class="grid grid-cols-4 gap-1 sm:gap-1.5">
+                <button type="button" onclick="setPlanTargetDate(0)" id="planChip-0" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-indigo-600 text-white shadow-glow-sm text-center transition-all truncate">امروز</button>
+                <button type="button" onclick="setPlanTargetDate(1)" id="planChip-1" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">فردا</button>
+                <button type="button" onclick="setPlanTargetDate(2)" id="planChip-2" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">۲ روز بعد</button>
+                <button type="button" onclick="setPlanTargetDate(3)" id="planChip-3" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">۳ روز بعد</button>
+              </div>
+
+              <!-- 3 Pill Inputs / Selects (Day | Month | Year) with Wheel & touch support -->
+              <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+                <select id="planShamsiDaySelect" onchange="onCustomPlanDateChange()" onwheel="handleWheelSelect(event, this)" class="glass-input rounded-xl px-2 py-1.5 text-xs font-bold text-center appearance-none font-mono cursor-pointer"></select>
+                <select id="planShamsiMonthSelect" onchange="onCustomPlanDateChange()" onwheel="handleWheelSelect(event, this)" class="glass-input rounded-xl px-2 py-1.5 text-xs font-bold text-center appearance-none cursor-pointer">
+                  <option value="1">فروردین</option><option value="2">اردیبهشت</option><option value="3">خرداد</option>
+                  <option value="4">تیر</option><option value="5">مرداد</option><option value="6">شهریور</option>
+                  <option value="7">مهر</option><option value="8">آبان</option><option value="9">آذر</option>
+                  <option value="10">دی</option><option value="11">بهمن</option><option value="12">اسفند</option>
+                </select>
+                <select id="planShamsiYearSelect" onchange="onCustomPlanDateChange()" onwheel="handleWheelSelect(event, this)" class="glass-input rounded-xl px-2 py-1.5 text-xs font-bold text-center appearance-none font-mono cursor-pointer">
+                  <option value="1405">1405</option><option value="1406">1406</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" id="planSubmitBtn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-white font-bold text-xs shadow-glow-sm flex items-center justify-center gap-1.5 transition-all">
               <i data-lucide="plus" class="w-4 h-4"></i>
-              <span>افزودن به برنامه‌های امروز</span>
+              <span id="planSubmitBtnText">افزودن به تارگت‌های امروز</span>
             </button>
           </form>
         </div>
 
-        <!-- RIGHT: ACTIVE PLANS -->
-        <div class="lg:col-span-8 space-y-3">
-          <div class="grid grid-cols-3 gap-2 text-center text-xs">
-            <div class="glass-panel p-2.5 rounded-2xl">
-              <span class="block text-[10px] text-slate-400 mb-0.5">کل تست‌های امروز</span>
-              <strong id="planStatTotalTests" class="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono">0 تست</strong>
+        <!-- RIGHT: PLANS VIEWER (visible on mobile when 'list' tab is active, always visible on desktop) -->
+        <div id="plannerListCol" class="lg:col-span-8 space-y-3 block">
+
+          <!-- Date Nav for viewing plans -->
+          <div class="glass-panel p-3 sm:p-4 rounded-3xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <i data-lucide="eye" class="w-3.5 h-3.5 text-amber-500"></i>
+                نمایش تارگت‌های:
+              </span>
+              <span id="planViewDateBadge" class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/30 px-2.5 py-0.5 rounded-xl font-mono">امروز</span>
             </div>
-            <div class="glass-panel p-2.5 rounded-2xl">
-              <span class="block text-[10px] text-slate-400 mb-0.5">تست‌های زده شده</span>
-              <strong id="planStatCompletedTests" class="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">0 تست</strong>
-            </div>
-            <div class="glass-panel p-2.5 rounded-2xl">
-              <span class="block text-[10px] text-slate-400 mb-0.5">زمان کل</span>
-              <strong id="planStatTotalDuration" class="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 font-mono">0 ساعت</strong>
+            <!-- 5 Quick Day Chips -->
+            <div class="grid grid-cols-5 gap-1 sm:gap-1.5">
+              <button type="button" onclick="setPlanViewDate(-1)" id="viewChip-m1" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">دیروز</button>
+              <button type="button" onclick="setPlanViewDate(0)" id="viewChip-0" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-indigo-600 text-white shadow-glow-sm text-center transition-all truncate">امروز</button>
+              <button type="button" onclick="setPlanViewDate(1)" id="viewChip-1" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">فردا</button>
+              <button type="button" onclick="setPlanViewDate(2)" id="viewChip-2" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">۲ روز بعد</button>
+              <button type="button" onclick="setPlanViewDate(3)" id="viewChip-3" class="py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate">۳ روز بعد</button>
             </div>
           </div>
 
-          <div class="glass-panel p-4 sm:p-5 rounded-3xl space-y-3">
+          <!-- Summary Metrics Cards -->
+          <div class="grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-xs">
+            <div class="glass-panel p-2 sm:p-2.5 rounded-2xl">
+              <span class="block text-[9px] sm:text-[10px] text-slate-400 mb-0.5 truncate">کل تارگت‌ها</span>
+              <strong id="planStatTotalTests" class="text-[11px] sm:text-sm font-black text-slate-900 dark:text-white font-mono block truncate">0 واحد</strong>
+            </div>
+            <div class="glass-panel p-2 sm:p-2.5 rounded-2xl">
+              <span class="block text-[9px] sm:text-[10px] text-slate-400 mb-0.5 truncate">انجام شده</span>
+              <strong id="planStatCompletedTests" class="text-[11px] sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono block truncate">0 (0%)</strong>
+            </div>
+            <div class="glass-panel p-2 sm:p-2.5 rounded-2xl">
+              <span class="block text-[9px] sm:text-[10px] text-slate-400 mb-0.5 truncate">زمان کل هدف</span>
+              <strong id="planStatTotalDuration" class="text-[11px] sm:text-sm font-black text-amber-600 dark:text-amber-400 font-mono block truncate">0 ساعت</strong>
+            </div>
+          </div>
+
+          <!-- Targets List Container Card -->
+          <div class="glass-panel p-3.5 sm:p-5 rounded-3xl space-y-3">
             <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/5">
               <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <i data-lucide="list-checks" class="w-4 h-4 text-amber-500"></i>
-                <span>لیست تارگت‌های امروز</span>
+                <span id="planListTitle">لیست تارگت‌های امروز</span>
               </h3>
-              <span id="planCountBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20 font-mono">0 فعال</span>
+              <div class="flex items-center gap-2">
+                <span id="planCountBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20 font-mono">0 فعال</span>
+                <button type="button" onclick="switchPlannerMobileTab('create')" class="lg:hidden text-[10px] px-2 py-0.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 flex items-center gap-0.5">
+                  <i data-lucide="plus" class="w-3 h-3"></i>
+                  <span>جدید</span>
+                </button>
+              </div>
             </div>
 
-            <div id="plansListContainer" class="space-y-2.5 max-h-[500px] overflow-y-auto pr-1"></div>
-            <div id="planEmptyState" class="py-10 text-center text-slate-400 dark:text-slate-500 space-y-1.5 hidden">
+            <div id="plansListContainer" class="space-y-2.5 max-h-[550px] overflow-y-auto pr-0.5"></div>
+            <div id="planEmptyState" class="py-10 text-center text-slate-400 dark:text-slate-500 space-y-2 hidden">
               <i data-lucide="target" class="w-8 h-8 mx-auto stroke-[1.5] text-amber-500/60"></i>
-              <p class="text-xs font-bold text-slate-700 dark:text-slate-300">هیچ برنامه‌ای برای امروز ثبت نشده است</p>
+              <p id="planEmptyText" class="text-xs font-bold text-slate-700 dark:text-slate-300">هیچ تارگتی برای این روز ثبت نشده است</p>
+              <button type="button" onclick="switchPlannerMobileTab('create')" class="lg:hidden mt-2 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-glow-sm inline-flex items-center gap-1">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>ثبت اولین تارگت برای این روز</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1184,7 +1338,7 @@
 
           <div>
             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">مبحث یا یادداشت:</label>
-            <input type="text" id="stopwatchNotes" placeholder="تست، حل تمرین..." class="w-full glass-input rounded-xl px-3 py-2 text-xs" />
+            <input type="text" id="stopwatchNotes" oninput="handleStopwatchNotesChange(this.value)" placeholder="تست، حل تمرین..." class="w-full glass-input rounded-xl px-3 py-2 text-xs" />
           </div>
 
           <div class="grid grid-cols-2 gap-2">
@@ -1765,8 +1919,18 @@
       }
     };
 
-    let stopwatch = { isRunning: false, startTime: 0, elapsedSeconds: 0, timerInterval: null };
-    let dashStopwatch = { isRunning: false, startTime: 0, startTimeFormatted: '', endTimeFormatted: '', elapsedSeconds: 0, timerInterval: null };
+    let activeStopwatchState = {
+      isRunning: false,
+      startTime: 0,
+      startTimeFormatted: '',
+      endTimeFormatted: '',
+      elapsedSeconds: 0,
+      subjectId: '',
+      notes: '',
+      timerInterval: null
+    };
+    let stopwatch = activeStopwatchState;
+    let dashStopwatch = activeStopwatchState;
 
     let weeklyChartInstance = null;
     let customChartInstance = null;
@@ -2160,16 +2324,22 @@
         });
       }
 
-      // 2. Stopwatch Notes Input
-      const swNotes = document.getElementById('stopwatchNotes');
-      if (swNotes) {
-        swNotes.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            saveStopwatchSession();
-          }
-        });
-      }
+      // 2. Stopwatch Notes Inputs
+      ['dashStopwatchNotes', 'stopwatchNotes'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (activeStopwatchState.isRunning || activeStopwatchState.elapsedSeconds > 0) {
+                saveGlobalStopwatchSession();
+              } else {
+                toggleGlobalStopwatch();
+              }
+            }
+          });
+        }
+      });
 
       // 3. Daily Review Date Search Inputs
       ['revYearInput', 'revMonthInput', 'revDayInput'].forEach(id => {
@@ -2241,7 +2411,11 @@
         renderWeeklyChart();
         renderDashboardPlansMiniList();
       } else if (section === 'planner') {
+        initPlannerDates();
         renderPlansList();
+        if (window.innerWidth < 1024) {
+          switchPlannerMobileTab(plannerMobileTab || 'list');
+        }
       } else if (section === 'dailyReview') {
         renderDailyReviewSection();
       } else if (section === 'analytics') {
@@ -2419,7 +2593,7 @@
 
     function saveDataToStorage(showToast = false) {
       if (!currentLoggedInUser) return;
-      appData.lastModified = Date.now();
+      appData.lastModified = serverNow();
       appData.lastDevice = DEVICE_ID;
       localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
       pushToCloud();
@@ -2431,16 +2605,23 @@
       if (cloudSyncTimeout) clearTimeout(cloudSyncTimeout);
       cloudSyncTimeout = setTimeout(async () => {
         try {
-          appData.lastModified = appData.lastModified || Date.now();
+          appData.lastModified = appData.lastModified || serverNow();
           appData.lastDevice = DEVICE_ID;
           const payload = Object.assign({}, appData, { auth_user: currentLoggedInUser });
-          await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}`, {
+          const res = await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.revision) {
+              appData.revision = data.revision;
+              localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
+            }
+          }
         } catch (err) {}
-      }, 250);
+      }, 200);
     }
 
     // ─── هماهنگی خودکار بین دستگاه‌ها: هر ۱۵ ثانیه بررسی، در صورت تغییر توسط دستگاه دیگر → ریلود کامل ───
@@ -2452,15 +2633,17 @@
         const serverData = await res.json();
         if (!serverData || serverData.exists === false) return;
 
+        const serverRev = serverData.revision || 0;
+        const localRev = appData.revision || 0;
         const serverTime = serverData.lastModified || 0;
         const localTime = appData.lastModified || 0;
         const serverDevice = serverData.lastDevice || '';
 
-        // اگه دستگاه دیگه‌ای داده‌های جدیدتر آپلود کرده → ریلود کامل صفحه
+        // اگه دستگاه دیگه‌ای داده‌های جدیدتر آپلود کرده → ریلود خودکار برای همگام‌سازی فوری
         const changedByOtherDevice = serverDevice && serverDevice !== DEVICE_ID;
-        const serverIsNewer = serverTime > localTime;
+        const serverIsNewer = (serverRev > localRev) || (serverTime > localTime);
 
-        if (serverIsNewer && changedByOtherDevice) {
+        if (changedByOtherDevice && serverIsNewer) {
           window.location.reload();
         }
       } catch (err) {}
@@ -2581,49 +2764,330 @@
       triggerToast(`هدف روزانه به ${current} ساعت تنظیم شد`, 'info');
     }
 
-    // --- DASHBOARD DIRECT MINI STOPWATCH ---
+    // --- ⏱ FULLY UNIFIED REALTIME GLOBAL STOPWATCH ENGINE ---
+
+    function getSelectedStopwatchSubject() {
+      if (activeStopwatchState.subjectId) return activeStopwatchState.subjectId;
+      const dSel = document.getElementById('dashStopwatchSubjectSelect');
+      if (dSel && dSel.value) return dSel.value;
+      const sSel = document.getElementById('stopwatchSubjectSelect');
+      if (sSel && sSel.value) return sSel.value;
+      return (appData.subjects && appData.subjects[0]?.id) || 'sub_phy';
+    }
+
+    function handleDashStopwatchNotesChange(val) {
+      activeStopwatchState.notes = val;
+      const sNotes = document.getElementById('stopwatchNotes');
+      if (sNotes && sNotes.value !== val) sNotes.value = val;
+      if (activeStopwatchState.isRunning || activeStopwatchState.elapsedSeconds > 0) {
+        saveActiveStopwatchToDisk();
+      }
+    }
+
+    function handleStopwatchNotesChange(val) {
+      activeStopwatchState.notes = val;
+      const dNotes = document.getElementById('dashStopwatchNotes');
+      if (dNotes && dNotes.value !== val) dNotes.value = val;
+      if (activeStopwatchState.isRunning || activeStopwatchState.elapsedSeconds > 0) {
+        saveActiveStopwatchToDisk();
+      }
+    }
+
+    function handleDropdownSubjectChange(sel) {
+      const val = typeof sel === 'string' ? sel : (sel ? sel.value : getSelectedStopwatchSubject());
+      activeStopwatchState.subjectId = val;
+      
+      const dSel = document.getElementById('dashStopwatchSubjectSelect');
+      const sSel = document.getElementById('stopwatchSubjectSelect');
+      if (dSel && dSel.value !== val) dSel.value = val;
+      if (sSel && sSel.value !== val) sSel.value = val;
+
+      updateDashStopwatchColor();
+      updateStopwatchBadgeColor();
+
+      if (activeStopwatchState.isRunning || activeStopwatchState.elapsedSeconds > 0) {
+        saveActiveStopwatchToDisk();
+        renderDailyReviewSection();
+      }
+    }
+
     function updateDashStopwatchColor() {
-      const select = document.getElementById('dashStopwatchSubjectSelect');
+      const subId = getSelectedStopwatchSubject();
       const badge = document.getElementById('dashStopwatchColorBadge');
-      if (select && badge) {
-        const sub = appData.subjects.find(s => s.id === select.value);
+      if (badge) {
+        const sub = appData.subjects.find(s => s.id === subId);
         if (sub) badge.style.backgroundColor = sub.color;
       }
     }
 
-    // --- ⏱ BULLETPROOF BACKGROUND PERSISTENT STOPWATCH ENGINE ---
+    function updateStopwatchBadgeColor() {
+      const subId = getSelectedStopwatchSubject();
+      const badge = document.getElementById('stopwatchSubjectColorBadge');
+      if (badge) {
+        const sub = appData.subjects.find(s => s.id === subId);
+        if (sub) badge.style.backgroundColor = sub.color;
+      }
+    }
+
+    function renderAllStopwatchDisplays(totalSecs) {
+      const safeSecs = Math.max(0, Math.floor(totalSecs || 0));
+      const h = String(Math.floor(safeSecs / 3600)).padStart(2, '0');
+      const m = String(Math.floor((safeSecs % 3600) / 60)).padStart(2, '0');
+      const s = String(safeSecs % 60).padStart(2, '0');
+      const formatted = `${h}:${m}:${s}`;
+
+      const dashDisp = document.getElementById('dashStopwatchTimerDisplay');
+      if (dashDisp) dashDisp.textContent = formatted;
+
+      const logDisp = document.getElementById('stopwatchDisplay');
+      if (logDisp) logDisp.textContent = formatted;
+    }
+
+    function renderDashStopwatchDisplay(totalSecs) {
+      renderAllStopwatchDisplays(totalSecs);
+    }
+
+    function updateAllStopwatchUIs(running, elapsed) {
+      const subId = getSelectedStopwatchSubject();
+
+      // 1. Sync dropdowns & color badges
+      const dSel = document.getElementById('dashStopwatchSubjectSelect');
+      const sSel = document.getElementById('stopwatchSubjectSelect');
+      if (dSel && subId && dSel.value !== subId) dSel.value = subId;
+      if (sSel && subId && sSel.value !== subId) sSel.value = subId;
+      updateDashStopwatchColor();
+      updateStopwatchBadgeColor();
+
+      // 2. Sync Notes inputs
+      const dNotes = document.getElementById('dashStopwatchNotes');
+      const sNotes = document.getElementById('stopwatchNotes');
+      const currentNote = activeStopwatchState.notes || '';
+      if (dNotes && dNotes.value !== currentNote) dNotes.value = currentNote;
+      if (sNotes && sNotes.value !== currentNote) sNotes.value = currentNote;
+
+      // 3. Dashboard UI Elements
+      const startText = document.getElementById('dashStopwatchStartTimeText');
+      const endText = document.getElementById('dashStopwatchEndTimeText');
+      const actionsRow = document.getElementById('dashStopwatchActionsRow');
+      const dashBtn = document.getElementById('dashStopwatchBtn');
+      const dashBtnText = document.getElementById('dashStopwatchBtnText');
+      const dashBtnIcon = document.getElementById('dashStopwatchBtnIcon');
+      const statusBadge = document.getElementById('dashStopwatchStatusBadge');
+      const statusText = document.getElementById('dashStopwatchStatusText');
+      const statusDot = document.getElementById('dashStopwatchDot');
+
+      // 4. Logger Tab UI Elements
+      const logToggleBtn = document.getElementById('stopwatchToggleBtn');
+      const logToggleText = document.getElementById('stopwatchToggleText');
+      const logToggleIcon = document.getElementById('stopwatchToggleIcon');
+      const logSaveBtn = document.getElementById('stopwatchSaveBtn');
+      const logResetBtn = document.getElementById('stopwatchResetBtn');
+      const logStatusDot = document.getElementById('timerStatusDot');
+      const logStatusText = document.getElementById('timerStatusText');
+
+      if (running) {
+        // --- RUNNING STATE ---
+        if (startText) startText.textContent = activeStopwatchState.startTimeFormatted || formatCurrentClockTime();
+        if (endText) endText.textContent = 'در حال ثبت...';
+        if (dashBtnText) dashBtnText.textContent = 'استپ';
+        if (dashBtn) dashBtn.className = 'px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+        if (dashBtnIcon) dashBtnIcon.setAttribute('data-lucide', 'pause');
+
+        if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
+        if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
+        if (statusText) statusText.textContent = 'در حال ثبت زمان';
+        if (actionsRow) actionsRow.classList.add('hidden');
+
+        if (logToggleText) logToggleText.textContent = 'توقف';
+        if (logToggleIcon) logToggleIcon.setAttribute('data-lucide', 'pause');
+        if (logToggleBtn) logToggleBtn.className = 'py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-glow-sm';
+        if (logSaveBtn) {
+          logSaveBtn.disabled = false;
+          logSaveBtn.className = 'py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-glow-emerald cursor-pointer';
+        }
+        if (logResetBtn) logResetBtn.classList.remove('hidden');
+        if (logStatusDot) logStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+        if (logStatusText) logStatusText.textContent = 'در حال ثبت زمان';
+
+      } else if (elapsed > 0) {
+        // --- PAUSED / WAITING TO SAVE STATE ---
+        if (startText) startText.textContent = activeStopwatchState.startTimeFormatted || '';
+        if (endText) endText.textContent = activeStopwatchState.endTimeFormatted || formatCurrentClockTime();
+        if (dashBtnText) dashBtnText.textContent = 'ادامه';
+        if (dashBtn) dashBtn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+        if (dashBtnIcon) dashBtnIcon.setAttribute('data-lucide', 'play');
+
+        if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/20 flex items-center gap-1';
+        if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
+        if (statusText) statusText.textContent = 'آماده ثبت';
+        if (actionsRow) actionsRow.classList.remove('hidden');
+
+        if (logToggleText) logToggleText.textContent = 'ادامه';
+        if (logToggleIcon) logToggleIcon.setAttribute('data-lucide', 'play');
+        if (logToggleBtn) logToggleBtn.className = 'py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-glow-sm';
+        if (logSaveBtn) {
+          logSaveBtn.disabled = false;
+          logSaveBtn.className = 'py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-glow-emerald cursor-pointer';
+        }
+        if (logResetBtn) logResetBtn.classList.remove('hidden');
+        if (logStatusDot) logStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
+        if (logStatusText) logStatusText.textContent = 'متوقف شده (آماده ثبت)';
+
+      } else {
+        // --- IDLE / RESET STATE ---
+        if (startText) startText.textContent = 'هنوز شروع نشده';
+        if (endText) endText.textContent = 'ـ';
+        if (dashBtnText) dashBtnText.textContent = 'استارت';
+        if (dashBtn) dashBtn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
+        if (dashBtnIcon) dashBtnIcon.setAttribute('data-lucide', 'play');
+
+        if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-white/5 flex items-center gap-1';
+        if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
+        if (statusText) statusText.textContent = 'آماده شروع';
+        if (actionsRow) actionsRow.classList.add('hidden');
+
+        if (logToggleText) logToggleText.textContent = 'شروع';
+        if (logToggleIcon) logToggleIcon.setAttribute('data-lucide', 'play');
+        if (logToggleBtn) logToggleBtn.className = 'py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-glow-sm';
+        if (logSaveBtn) {
+          logSaveBtn.disabled = true;
+          logSaveBtn.className = 'py-2.5 px-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed';
+        }
+        if (logResetBtn) logResetBtn.classList.add('hidden');
+        if (logStatusDot) logStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        if (logStatusText) logStatusText.textContent = 'آماده شروع';
+      }
+
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+
+    function toggleGlobalStopwatch() {
+      if (!activeStopwatchState.isRunning) {
+        // Start or Resume
+        activeStopwatchState.isRunning = true;
+        activeStopwatchState.subjectId = getSelectedStopwatchSubject();
+        
+        const dNotes = document.getElementById('dashStopwatchNotes')?.value.trim();
+        const sNotes = document.getElementById('stopwatchNotes')?.value.trim();
+        activeStopwatchState.notes = dNotes || sNotes || activeStopwatchState.notes || '';
+
+        if (!activeStopwatchState.startTime) {
+          activeStopwatchState.startTime = serverNow();
+          activeStopwatchState.startTimeFormatted = formatCurrentClockTime();
+        } else {
+          // Resume: rebase startTime so elapsed continues seamlessly
+          activeStopwatchState.startTime = serverNow() - (activeStopwatchState.elapsedSeconds * 1000);
+        }
+
+        clearInterval(activeStopwatchState.timerInterval);
+        activeStopwatchState.timerInterval = setInterval(() => {
+          const currentElapsed = Math.max(0, Math.floor((serverNow() - activeStopwatchState.startTime) / 1000));
+          activeStopwatchState.elapsedSeconds = currentElapsed;
+          renderAllStopwatchDisplays(currentElapsed);
+        }, 1000);
+
+        renderAllStopwatchDisplays(activeStopwatchState.elapsedSeconds);
+        updateAllStopwatchUIs(true, activeStopwatchState.elapsedSeconds);
+        saveActiveStopwatchToDisk();
+        renderDailyReviewSection();
+        triggerToast(`کرنومتر آغاز شد (${activeStopwatchState.startTimeFormatted})`, 'info');
+      } else {
+        // Pause
+        activeStopwatchState.isRunning = false;
+        clearInterval(activeStopwatchState.timerInterval);
+        activeStopwatchState.elapsedSeconds = Math.max(0, Math.floor((serverNow() - activeStopwatchState.startTime) / 1000));
+        activeStopwatchState.endTimeFormatted = formatCurrentClockTime();
+
+        renderAllStopwatchDisplays(activeStopwatchState.elapsedSeconds);
+        updateAllStopwatchUIs(false, activeStopwatchState.elapsedSeconds);
+        saveActiveStopwatchToDisk();
+        renderDailyReviewSection();
+      }
+    }
+
+    function toggleDashStopwatch() {
+      toggleGlobalStopwatch();
+    }
+
+    function saveGlobalStopwatchSession() {
+      let totalSecs = activeStopwatchState.elapsedSeconds;
+      if (activeStopwatchState.isRunning) {
+        totalSecs = Math.max(0, Math.floor((serverNow() - activeStopwatchState.startTime) / 1000));
+      }
+      const durationMinutes = Math.max(1, Math.round(totalSecs / 60));
+      const subjectId = getSelectedStopwatchSubject();
+      const sub = appData.subjects.find(s => s.id === subjectId) || { name: 'درس' };
+      
+      const dNotes = document.getElementById('dashStopwatchNotes')?.value.trim();
+      const sNotes = document.getElementById('stopwatchNotes')?.value.trim();
+      const notes = dNotes || sNotes || activeStopwatchState.notes || `مطالعه با زمان‌سنج (${activeStopwatchState.startTimeFormatted || formatCurrentClockTime()} تا ${activeStopwatchState.endTimeFormatted || formatCurrentClockTime()})`;
+
+      const newLog = {
+        id: 'log_' + Math.random().toString(36).substring(2, 9),
+        subjectId: subjectId,
+        date: getLocalDateISO(),
+        startTime: activeStopwatchState.startTimeFormatted || formatCurrentClockTime(),
+        endTime: activeStopwatchState.endTimeFormatted || formatCurrentClockTime(),
+        durationMinutes: durationMinutes,
+        notes: notes,
+        timestamp: Date.now()
+      };
+
+      appData.logs.unshift(newLog);
+      saveDataToStorage(false);
+
+      resetGlobalStopwatch(false);
+      clearActiveStopwatchFromDisk();
+
+      triggerToast(`جلسه ${sub.name} (${formatDurationHM(durationMinutes)}) در سوابق ذخیره شد`, 'success');
+      renderAll();
+    }
+
+    function saveDashStopwatchSession() {
+      saveGlobalStopwatchSession();
+    }
+
+    function resetGlobalStopwatch(confirmPrompt = true) {
+      if (confirmPrompt && !confirm('آیا از متوقف و ریست کردن زمان‌سنج اطمینان دارید؟')) return;
+      activeStopwatchState.isRunning = false;
+      clearInterval(activeStopwatchState.timerInterval);
+      activeStopwatchState.startTime = 0;
+      activeStopwatchState.startTimeFormatted = '';
+      activeStopwatchState.endTimeFormatted = '';
+      activeStopwatchState.elapsedSeconds = 0;
+      activeStopwatchState.notes = '';
+
+      const dNotes = document.getElementById('dashStopwatchNotes');
+      const sNotes = document.getElementById('stopwatchNotes');
+      if (dNotes) dNotes.value = '';
+      if (sNotes) sNotes.value = '';
+
+      renderAllStopwatchDisplays(0);
+      updateAllStopwatchUIs(false, 0);
+      clearActiveStopwatchFromDisk();
+
+      renderDailyReviewSection();
+      if (confirmPrompt) triggerToast('کرنومتر متوقف و ریست شد', 'info');
+    }
+
+    function cancelDashStopwatch(showToast = true) {
+      resetGlobalStopwatch(showToast);
+    }
+
     function saveActiveStopwatchToDisk() {
-      if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
-        const subjectSelect = document.getElementById('dashStopwatchSubjectSelect');
-        const subjectId = subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy');
-        // Always store the REAL startTime (absolute epoch ms) so other devices can calculate elapsed correctly
-        const realStartTime = dashStopwatch.isRunning
-          ? dashStopwatch.startTime  // already set as Date.now() - elapsed*1000
-          : (dashStopwatch.startTime || Date.now() - dashStopwatch.elapsedSeconds * 1000);
+      if (activeStopwatchState.isRunning || activeStopwatchState.elapsedSeconds > 0) {
+        const realStartTime = activeStopwatchState.isRunning
+          ? activeStopwatchState.startTime
+          : (activeStopwatchState.startTime || serverNow() - activeStopwatchState.elapsedSeconds * 1000);
+
         appData.activeStopwatch = {
-          type: 'dash',
-          isRunning: dashStopwatch.isRunning,
+          isRunning: activeStopwatchState.isRunning,
           startTime: realStartTime,
-          startTimeFormatted: dashStopwatch.startTimeFormatted,
-          endTimeFormatted: dashStopwatch.endTimeFormatted,
-          elapsedSeconds: dashStopwatch.elapsedSeconds,
-          subjectId: subjectId,
-          timestamp: Date.now()
-        };
-      } else if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
-        const subjectSelect = document.getElementById('stopwatchSubjectSelect');
-        const notesInput = document.getElementById('stopwatchNotes');
-        const realStartTime = stopwatch.isRunning
-          ? stopwatch.startTime
-          : (stopwatch.startTime || Date.now() - stopwatch.elapsedSeconds * 1000);
-        appData.activeStopwatch = {
-          type: 'logger',
-          isRunning: stopwatch.isRunning,
-          startTime: realStartTime,
-          startTimeFormatted: stopwatch.startTimeFormatted,
-          elapsedSeconds: stopwatch.elapsedSeconds,
-          subjectId: subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy'),
-          notes: notesInput ? notesInput.value : '',
+          startTimeFormatted: activeStopwatchState.startTimeFormatted,
+          endTimeFormatted: activeStopwatchState.endTimeFormatted,
+          elapsedSeconds: activeStopwatchState.elapsedSeconds,
+          subjectId: getSelectedStopwatchSubject(),
+          notes: activeStopwatchState.notes || '',
           timestamp: Date.now()
         };
       } else {
@@ -2639,146 +3103,52 @@
 
     function syncActiveStopwatchFromAppData() {
       const swState = appData.activeStopwatch;
-      if (swState && swState.isRunning && swState.startTime) {
-        // Calculate elapsed using server-normalized time to prevent clock skew across devices
-        const elapsed = Math.max(0, Math.floor((serverNow() - swState.startTime) / 1000));
+      if (swState && (swState.isRunning || swState.elapsedSeconds > 0)) {
+        activeStopwatchState.isRunning = !!swState.isRunning;
+        activeStopwatchState.startTime = swState.startTime || 0;
+        activeStopwatchState.startTimeFormatted = swState.startTimeFormatted || formatCurrentClockTime();
+        activeStopwatchState.endTimeFormatted = swState.endTimeFormatted || '';
+        activeStopwatchState.subjectId = swState.subjectId || getSelectedStopwatchSubject();
+        activeStopwatchState.notes = swState.notes || '';
 
-        if (swState.type === 'logger') {
-          stopwatch.isRunning = true;
-          stopwatch.startTime = swState.startTime;
-          stopwatch.elapsedSeconds = swState.elapsedSeconds || 0;
-          stopwatch.startTimeFormatted = swState.startTimeFormatted || formatCurrentClockTime();
-          
-          if (swState.subjectId) {
-            const select = document.getElementById('stopwatchSubjectSelect');
-            if (select) select.value = swState.subjectId;
-            handleDropdownSubjectChange(swState.subjectId);
-          }
-          if (swState.notes) {
-            const notesInput = document.getElementById('stopwatchNotes');
-            if (notesInput) notesInput.value = swState.notes;
-          }
-          startTimerInterval();
-          updateStopwatchUI(true);
-        } else {
-          dashStopwatch.isRunning = true;
-          dashStopwatch.startTime = swState.startTime;
-          dashStopwatch.startTimeFormatted = swState.startTimeFormatted || formatCurrentClockTime();
-          dashStopwatch.elapsedSeconds = elapsed;
+        if (swState.isRunning && swState.startTime) {
+          const elapsed = Math.max(0, Math.floor((serverNow() - swState.startTime) / 1000));
+          activeStopwatchState.elapsedSeconds = elapsed;
 
-          if (swState.subjectId) {
-            const select = document.getElementById('dashStopwatchSubjectSelect');
-            if (select) select.value = swState.subjectId;
-            updateDashStopwatchColor();
-          }
+          renderAllStopwatchDisplays(elapsed);
+          updateAllStopwatchUIs(true, elapsed);
 
-          const startText = document.getElementById('dashStopwatchStartTimeText');
-          const endText = document.getElementById('dashStopwatchEndTimeText');
-          const actionsRow = document.getElementById('dashStopwatchActionsRow');
-          const btn = document.getElementById('dashStopwatchBtn');
-          const btnText = document.getElementById('dashStopwatchBtnText');
-          const btnIcon = document.getElementById('dashStopwatchBtnIcon');
-          const statusBadge = document.getElementById('dashStopwatchStatusBadge');
-          const statusText = document.getElementById('dashStopwatchStatusText');
-          const statusDot = document.getElementById('dashStopwatchDot');
-
-          if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
-          if (endText) endText.textContent = 'در حال ثبت...';
-          if (btnText) btnText.textContent = 'استپ';
-          if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-          if (btnIcon) btnIcon.setAttribute('data-lucide', 'pause');
-
-          if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
-          if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
-          if (statusText) statusText.textContent = 'در حال ثبت زمان';
-          if (actionsRow) actionsRow.classList.add('hidden');
-
-          renderDashStopwatchDisplay(elapsed);
-
-          clearInterval(dashStopwatch.timerInterval);
-          dashStopwatch.timerInterval = setInterval(() => {
-            const currentElapsed = Math.max(0, Math.floor((serverNow() - dashStopwatch.startTime) / 1000));
-            dashStopwatch.elapsedSeconds = currentElapsed;
-            renderDashStopwatchDisplay(currentElapsed);
+          clearInterval(activeStopwatchState.timerInterval);
+          activeStopwatchState.timerInterval = setInterval(() => {
+            const currentElapsed = Math.max(0, Math.floor((serverNow() - activeStopwatchState.startTime) / 1000));
+            activeStopwatchState.elapsedSeconds = currentElapsed;
+            renderAllStopwatchDisplays(currentElapsed);
           }, 1000);
-        }
-      } else if (swState && !swState.isRunning && swState.elapsedSeconds > 0) {
-        if (swState.type === 'logger') {
-          stopwatch.isRunning = false;
-          clearInterval(stopwatch.timerInterval);
-          stopwatch.elapsedSeconds = swState.elapsedSeconds;
-          const h = String(Math.floor(swState.elapsedSeconds / 3600)).padStart(2, '0');
-          const m = String(Math.floor((swState.elapsedSeconds % 3600) / 60)).padStart(2, '0');
-          const s = String(swState.elapsedSeconds % 60).padStart(2, '0');
-          const d = document.getElementById('stopwatchDisplay');
-          if (d) d.textContent = `${h}:${m}:${s}`;
-          updateStopwatchUI(false);
         } else {
-          dashStopwatch.isRunning = false;
-          clearInterval(dashStopwatch.timerInterval);
-          dashStopwatch.elapsedSeconds = swState.elapsedSeconds;
-          dashStopwatch.startTimeFormatted = swState.startTimeFormatted || '';
-          dashStopwatch.endTimeFormatted = swState.endTimeFormatted || '';
-          renderDashStopwatchDisplay(swState.elapsedSeconds);
+          activeStopwatchState.elapsedSeconds = swState.elapsedSeconds || 0;
+          clearInterval(activeStopwatchState.timerInterval);
+          renderAllStopwatchDisplays(activeStopwatchState.elapsedSeconds);
+          updateAllStopwatchUIs(false, activeStopwatchState.elapsedSeconds);
+        }
+      } else {
+        // Null / cleared
+        activeStopwatchState.isRunning = false;
+        clearInterval(activeStopwatchState.timerInterval);
+        activeStopwatchState.startTime = 0;
+        activeStopwatchState.startTimeFormatted = '';
+        activeStopwatchState.endTimeFormatted = '';
+        activeStopwatchState.elapsedSeconds = 0;
+        activeStopwatchState.notes = '';
 
-          const startText = document.getElementById('dashStopwatchStartTimeText');
-          const endText = document.getElementById('dashStopwatchEndTimeText');
-          const actionsRow = document.getElementById('dashStopwatchActionsRow');
-          const btn = document.getElementById('dashStopwatchBtn');
-          const btnText = document.getElementById('dashStopwatchBtnText');
-          const btnIcon = document.getElementById('dashStopwatchBtnIcon');
-          const statusBadge = document.getElementById('dashStopwatchStatusBadge');
-          const statusText = document.getElementById('dashStopwatchStatusText');
-          const statusDot = document.getElementById('dashStopwatchDot');
+        const dNotes = document.getElementById('dashStopwatchNotes');
+        const sNotes = document.getElementById('stopwatchNotes');
+        if (dNotes) dNotes.value = '';
+        if (sNotes) sNotes.value = '';
 
-          if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
-          if (endText) endText.textContent = dashStopwatch.endTimeFormatted || formatCurrentClockTime();
-          if (btnText) btnText.textContent = 'ادامه';
-          if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-          if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
-          if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/20 flex items-center gap-1';
-          if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
-          if (statusText) statusText.textContent = 'آماده ثبت';
-          if (actionsRow) actionsRow.classList.remove('hidden');
-        }
-      } else if (!swState) {
-        // Stopwatch cleared by another device (they saved/cancelled) — silently reset local UI without pushing to cloud
-        if (dashStopwatch.isRunning || dashStopwatch.elapsedSeconds > 0) {
-          dashStopwatch.isRunning = false;
-          clearInterval(dashStopwatch.timerInterval);
-          dashStopwatch.elapsedSeconds = 0;
-          dashStopwatch.startTime = 0;
-          renderDashStopwatchDisplay(0);
-          const startText = document.getElementById('dashStopwatchStartTimeText');
-          const endText = document.getElementById('dashStopwatchEndTimeText');
-          const actionsRow = document.getElementById('dashStopwatchActionsRow');
-          const btn = document.getElementById('dashStopwatchBtn');
-          const btnText = document.getElementById('dashStopwatchBtnText');
-          const btnIcon = document.getElementById('dashStopwatchBtnIcon');
-          const statusBadge = document.getElementById('dashStopwatchStatusBadge');
-          const statusText = document.getElementById('dashStopwatchStatusText');
-          const statusDot = document.getElementById('dashStopwatchDot');
-          if (startText) startText.textContent = 'هنوز شروع نشده';
-          if (endText) endText.textContent = 'ـ';
-          if (actionsRow) actionsRow.classList.add('hidden');
-          if (btnText) btnText.textContent = 'استارت';
-          if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-          if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
-          if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-white/5 flex items-center gap-1';
-          if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
-          if (statusText) statusText.textContent = 'آماده شروع';
-        }
-        if (stopwatch.isRunning || stopwatch.elapsedSeconds > 0) {
-          stopwatch.isRunning = false;
-          clearInterval(stopwatch.timerInterval);
-          stopwatch.startTime = 0;
-          stopwatch.elapsedSeconds = 0;
-          const d = document.getElementById('stopwatchDisplay');
-          if (d) d.textContent = '00:00:00';
-          updateStopwatchUI(false);
-          // Do NOT call clearActiveStopwatchFromDisk here — that would push null back to cloud
-        }
+        renderAllStopwatchDisplays(0);
+        updateAllStopwatchUIs(false, 0);
       }
+      renderDailyReviewSection();
       if (window.lucide && lucide.createIcons) lucide.createIcons();
     }
 
@@ -2786,169 +3156,307 @@
       syncActiveStopwatchFromAppData();
     }
 
-    function toggleDashStopwatch() {
-      const btn = document.getElementById('dashStopwatchBtn');
-      const btnText = document.getElementById('dashStopwatchBtnText');
-      const btnIcon = document.getElementById('dashStopwatchBtnIcon');
-      const statusBadge = document.getElementById('dashStopwatchStatusBadge');
-      const statusText = document.getElementById('dashStopwatchStatusText');
-      const statusDot = document.getElementById('dashStopwatchDot');
-      const startText = document.getElementById('dashStopwatchStartTimeText');
-      const endText = document.getElementById('dashStopwatchEndTimeText');
-      const actionsRow = document.getElementById('dashStopwatchActionsRow');
-
-      if (!dashStopwatch.isRunning) {
-        dashStopwatch.isRunning = true;
-        if (!dashStopwatch.startTime) {
-          dashStopwatch.startTime = serverNow();
-          dashStopwatch.startTimeFormatted = formatCurrentClockTime();
-        } else {
-          // Resume: recalculate startTime so elapsed stays continuous
-          dashStopwatch.startTime = serverNow() - (dashStopwatch.elapsedSeconds * 1000);
-        }
-        
-        if (startText) startText.textContent = dashStopwatch.startTimeFormatted;
-        if (endText) endText.textContent = 'در حال ثبت...';
-        if (btnText) btnText.textContent = 'استپ';
-        if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-        if (btnIcon) btnIcon.setAttribute('data-lucide', 'pause');
-
-        if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
-        if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
-        if (statusText) statusText.textContent = 'در حال ثبت زمان';
-        if (actionsRow) actionsRow.classList.add('hidden');
-
-        clearInterval(dashStopwatch.timerInterval);
-        dashStopwatch.timerInterval = setInterval(() => {
-          const elapsed = Math.max(0, Math.floor((serverNow() - dashStopwatch.startTime) / 1000));
-          dashStopwatch.elapsedSeconds = elapsed;
-          renderDashStopwatchDisplay(elapsed);
-        }, 1000);
-
-        saveActiveStopwatchToDisk();
-        triggerToast(`کرنومتر شروع شد (${dashStopwatch.startTimeFormatted})`, 'info');
-      } else {
-        dashStopwatch.isRunning = false;
-        clearInterval(dashStopwatch.timerInterval);
-        dashStopwatch.elapsedSeconds = Math.max(0, Math.floor((serverNow() - dashStopwatch.startTime) / 1000));
-        dashStopwatch.endTimeFormatted = formatCurrentClockTime();
-
-        if (endText) endText.textContent = dashStopwatch.endTimeFormatted;
-        if (btnText) btnText.textContent = 'ادامه';
-        if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-        if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
-
-        if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/20 flex items-center gap-1';
-        if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
-        if (statusText) statusText.textContent = 'آماده ثبت';
-        if (actionsRow) actionsRow.classList.remove('hidden');
-
-        saveActiveStopwatchToDisk();
-      }
-
-      if (window.lucide && lucide.createIcons) lucide.createIcons();
-    }
-
-    function renderDashStopwatchDisplay(totalSecs) {
-      const safeSecs = Math.max(0, Math.floor(totalSecs || 0));
-      const h = String(Math.floor(safeSecs / 3600)).padStart(2, '0');
-      const m = String(Math.floor((safeSecs % 3600) / 60)).padStart(2, '0');
-      const s = String(safeSecs % 60).padStart(2, '0');
-      const el = document.getElementById('dashStopwatchTimerDisplay');
-      if (el) el.textContent = `${h}:${m}:${s}`;
-    }
-
-    function saveDashStopwatchSession() {
-      const durationMinutes = Math.max(1, Math.round(dashStopwatch.elapsedSeconds / 60));
-      const subjectSelect = document.getElementById('dashStopwatchSubjectSelect');
-      const subjectId = subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy');
-      const sub = appData.subjects.find(s => s.id === subjectId) || { name: 'درس' };
-      const todayISO = getLocalDateISO();
-
-      const newLog = {
-        id: 'log_' + Math.random().toString(36).substring(2, 9),
-        subjectId: subjectId,
-        date: todayISO,
-        startTime: dashStopwatch.startTimeFormatted,
-        endTime: dashStopwatch.endTimeFormatted || formatCurrentClockTime(),
-        durationMinutes: durationMinutes,
-        notes: `مطالعه با زمان‌سنج (${dashStopwatch.startTimeFormatted} تا ${dashStopwatch.endTimeFormatted || formatCurrentClockTime()})`,
-        timestamp: Date.now()
-      };
-
-      appData.logs.unshift(newLog);
-      saveDataToStorage(false);
-      cancelDashStopwatch(false);
-      clearActiveStopwatchFromDisk();
-      triggerToast(`جلسه ${sub.name} (${durationMinutes} دقیقه) ذخیره شد`, 'success');
-      renderAll();
-    }
-
-    function cancelDashStopwatch(showToast = true) {
-      dashStopwatch.isRunning = false;
-      clearInterval(dashStopwatch.timerInterval);
-      dashStopwatch.elapsedSeconds = 0;
-      dashStopwatch.startTime = 0;
-      renderDashStopwatchDisplay(0);
-
-      const startText = document.getElementById('dashStopwatchStartTimeText');
-      const endText = document.getElementById('dashStopwatchEndTimeText');
-      const actionsRow = document.getElementById('dashStopwatchActionsRow');
-      const btn = document.getElementById('dashStopwatchBtn');
-      const btnText = document.getElementById('dashStopwatchBtnText');
-      const btnIcon = document.getElementById('dashStopwatchBtnIcon');
-      const statusBadge = document.getElementById('dashStopwatchStatusBadge');
-      const statusText = document.getElementById('dashStopwatchStatusText');
-      const statusDot = document.getElementById('dashStopwatchDot');
-
-      if (startText) startText.textContent = 'هنوز شروع نشده';
-      if (endText) endText.textContent = 'ـ';
-      if (actionsRow) actionsRow.classList.add('hidden');
-      if (btnText) btnText.textContent = 'استارت';
-      if (btn) btn.className = 'px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-glow-sm whitespace-nowrap';
-      if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
-
-      if (statusBadge) statusBadge.className = 'text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-white/5 flex items-center gap-1';
-      if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
-      if (statusText) statusText.textContent = 'آماده شروع';
-
-      clearActiveStopwatchFromDisk();
-      if (showToast) triggerToast('کرنومتر متوقف و پاک شد', 'info');
-      if (window.lucide && lucide.createIcons) lucide.createIcons();
-    }
-
     // --- STUDY PLANNER LOGIC ---
+    let currentPlanType = 'test'; // 'test' | 'descriptive'
+    let selectedPlanTargetISO = ''; // date to assign when creating a plan
+    let selectedPlanViewISO = '';   // date to display plans for
+    let plannerMobileTab = 'list';  // 'list' | 'create'
+
+    function switchPlannerMobileTab(tab) {
+      plannerMobileTab = tab;
+      const listBtn = document.getElementById('tabPlanListBtn');
+      const createBtn = document.getElementById('tabPlanCreateBtn');
+      const listCol = document.getElementById('plannerListCol');
+      const createCol = document.getElementById('plannerCreateCol');
+
+      if (tab === 'list') {
+        if (listBtn) listBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-600 text-white shadow-glow-sm';
+        if (createBtn) createBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 flex items-center justify-center gap-1.5 transition-all';
+        if (listCol) {
+          listCol.classList.remove('hidden');
+          listCol.classList.add('block');
+        }
+        if (createCol) {
+          createCol.classList.remove('block');
+          createCol.classList.add('hidden', 'lg:block');
+        }
+      } else {
+        if (createBtn) createBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all bg-amber-500 text-white shadow-glow-sm';
+        if (listBtn) listBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 flex items-center justify-center gap-1.5 transition-all';
+        if (createCol) {
+          createCol.classList.remove('hidden', 'lg:block');
+          createCol.classList.add('block');
+        }
+        if (listCol) {
+          listCol.classList.remove('block');
+          listCol.classList.add('hidden', 'lg:block');
+        }
+      }
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+
+    function setPlanType(type) {
+      currentPlanType = type;
+      const testBtn = document.getElementById('planTypeBtn-test');
+      const descBtn = document.getElementById('planTypeBtn-descriptive');
+      const countLabel = document.getElementById('planCountLabel');
+      const unitBadge = document.getElementById('planUnitBadge');
+      const paceLabel = document.getElementById('planPaceLabel');
+      const paceContainer = document.getElementById('planPaceContainer');
+      const countInput = document.getElementById('planTestCountInput');
+
+      if (type === 'test') {
+        if (testBtn) testBtn.className = 'py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-amber-500 text-white shadow-glow-sm';
+        if (descBtn) descBtn.className = 'py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900';
+        if (countLabel) countLabel.textContent = 'تعداد تست هدف:';
+        if (unitBadge) unitBadge.textContent = 'تست';
+        if (paceLabel) paceLabel.textContent = 'سرعت:';
+        if (paceContainer) paceContainer.className = 'bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl flex items-center justify-between text-xs transition-colors';
+        if (countInput && (!countInput.value || countInput.value === '15')) countInput.value = '40';
+      } else {
+        if (testBtn) testBtn.className = 'py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900';
+        if (descBtn) descBtn.className = 'py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-glow-sm';
+        if (countLabel) countLabel.textContent = 'حجم مطالعه هدف (صفحه/تمرین):';
+        if (unitBadge) unitBadge.textContent = 'صفحه';
+        if (paceLabel) paceLabel.textContent = 'زمان‌بندی:';
+        if (paceContainer) paceContainer.className = 'bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl flex items-center justify-between text-xs transition-colors';
+        if (countInput && (!countInput.value || countInput.value === '40')) countInput.value = '15';
+      }
+      updatePlanPaceCalculation();
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+
     function updatePlanPaceCalculation() {
-      const tests = parseInt(document.getElementById('planTestCountInput')?.value) || 0;
+      const count = parseInt(document.getElementById('planTestCountInput')?.value) || 0;
       const mins = parseInt(document.getElementById('planDurationInput')?.value) || 0;
       const paceBadge = document.getElementById('planPaceText');
       if (!paceBadge) return;
-      if (tests <= 0 || mins <= 0) { paceBadge.textContent = 'ـ'; return; }
-      const secPerTest = Math.round((mins * 60) / tests);
-      paceBadge.textContent = `${secPerTest} ثانیه/تست`;
+      if (count <= 0 || mins <= 0) { paceBadge.textContent = 'ـ'; return; }
+      
+      if (currentPlanType === 'test') {
+        const secPerTest = Math.round((mins * 60) / count);
+        paceBadge.textContent = `${secPerTest} ثانیه/تست`;
+      } else {
+        const minPerUnit = (mins / count).toFixed(1);
+        paceBadge.textContent = `${minPerUnit} دقیقه برای هر صفحه/تمرین`;
+      }
+    }
+
+    function initPlannerDates() {
+      const todayISO = getLocalDateISO();
+      if (!selectedPlanTargetISO) selectedPlanTargetISO = todayISO;
+      if (!selectedPlanViewISO) selectedPlanViewISO = todayISO;
+
+      // Populate day select 1..31 if empty
+      const daySelect = document.getElementById('planShamsiDaySelect');
+      if (daySelect && daySelect.options.length === 0) {
+        daySelect.innerHTML = '';
+        for (let d = 1; d <= 31; d++) {
+          const opt = document.createElement('option');
+          opt.value = String(d);
+          opt.textContent = String(d);
+          daySelect.appendChild(opt);
+        }
+      }
+
+      // Set selects to current Jalali date
+      const now = new Date();
+      const jt = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      if (daySelect) daySelect.value = String(jt.jd);
+      const monthSelect = document.getElementById('planShamsiMonthSelect');
+      if (monthSelect) monthSelect.value = String(jt.jm);
+      const yearSelect = document.getElementById('planShamsiYearSelect');
+      if (yearSelect) {
+        if (yearSelect.querySelector(`option[value="${jt.jy}"]`)) {
+          yearSelect.value = String(jt.jy);
+        } else {
+          yearSelect.value = '1405';
+        }
+      }
+
+      updatePlanSelectedDateBadge();
+      updatePlanViewChips();
+    }
+
+    function handleWheelSelect(event, selectEl) {
+      event.preventDefault();
+      if (!selectEl) return;
+      const delta = Math.sign(event.deltaY);
+      let newIdx = selectEl.selectedIndex + delta;
+      if (newIdx < 0) newIdx = selectEl.options.length - 1;
+      if (newIdx >= selectEl.options.length) newIdx = 0;
+      selectEl.selectedIndex = newIdx;
+      onCustomPlanDateChange();
+    }
+
+    function onCustomPlanDateChange() {
+      const daySelect = document.getElementById('planShamsiDaySelect');
+      const monthSelect = document.getElementById('planShamsiMonthSelect');
+      const yearSelect = document.getElementById('planShamsiYearSelect');
+      if (!daySelect || !monthSelect || !yearSelect) return;
+
+      const jd = parseInt(daySelect.value) || 1;
+      const jm = parseInt(monthSelect.value) || 1;
+      const jy = parseInt(yearSelect.value) || 1405;
+
+      const gd = jalaliToGregorian(jy, jm, jd);
+      selectedPlanTargetISO = `${gd.gy}-${String(gd.gm).padStart(2, '0')}-${String(gd.gd).padStart(2, '0')}`;
+
+      // Match active quick chip
+      const todayISO = getLocalDateISO();
+      const d1ISO = getLocalDateISO(new Date(Date.now() + 86400000));
+      const d2ISO = getLocalDateISO(new Date(Date.now() + 2 * 86400000));
+      const d3ISO = getLocalDateISO(new Date(Date.now() + 3 * 86400000));
+
+      let matchedOffset = null;
+      if (selectedPlanTargetISO === todayISO) matchedOffset = 0;
+      else if (selectedPlanTargetISO === d1ISO) matchedOffset = 1;
+      else if (selectedPlanTargetISO === d2ISO) matchedOffset = 2;
+      else if (selectedPlanTargetISO === d3ISO) matchedOffset = 3;
+
+      [0, 1, 2, 3].forEach(i => {
+        const chip = document.getElementById(`planChip-${i}`);
+        if (chip) {
+          chip.className = (matchedOffset === i)
+            ? 'py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-indigo-600 text-white shadow-glow-sm text-center transition-all truncate'
+            : 'py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate';
+        }
+      });
+
+      updatePlanSelectedDateBadge();
+    }
+
+    function setPlanTargetDate(offsetDays) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + offsetDays);
+      selectedPlanTargetISO = getLocalDateISO(targetDate);
+      const jt = gregorianToJalali(targetDate.getFullYear(), targetDate.getMonth() + 1, targetDate.getDate());
+
+      const daySelect = document.getElementById('planShamsiDaySelect');
+      const monthSelect = document.getElementById('planShamsiMonthSelect');
+      const yearSelect = document.getElementById('planShamsiYearSelect');
+
+      if (daySelect) daySelect.value = String(jt.jd);
+      if (monthSelect) monthSelect.value = String(jt.jm);
+      if (yearSelect) yearSelect.value = String(jt.jy);
+
+      [0, 1, 2, 3].forEach(i => {
+        const chip = document.getElementById(`planChip-${i}`);
+        if (chip) {
+          chip.className = (offsetDays === i)
+            ? 'py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-indigo-600 text-white shadow-glow-sm text-center transition-all truncate'
+            : 'py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate';
+        }
+      });
+
+      updatePlanSelectedDateBadge();
+    }
+
+    function updatePlanSelectedDateBadge() {
+      const badge = document.getElementById('planSelectedDateBadge');
+      const btn = document.getElementById('planSubmitBtnText');
+      if (!badge) return;
+
+      const todayISO = getLocalDateISO();
+      const d1ISO = getLocalDateISO(new Date(Date.now() + 86400000));
+      const d2ISO = getLocalDateISO(new Date(Date.now() + 2 * 86400000));
+      const d3ISO = getLocalDateISO(new Date(Date.now() + 3 * 86400000));
+
+      let labelStr = '';
+      if (selectedPlanTargetISO === todayISO) {
+        labelStr = 'امروز';
+      } else if (selectedPlanTargetISO === d1ISO) {
+        labelStr = 'فردا';
+      } else if (selectedPlanTargetISO === d2ISO) {
+        labelStr = '۲ روز بعد';
+      } else if (selectedPlanTargetISO === d3ISO) {
+        labelStr = '۳ روز بعد';
+      }
+
+      const d = new Date((selectedPlanTargetISO || todayISO) + 'T00:00:00');
+      const j = gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      const monthName = SHAMSI_MONTH_NAMES[j.jm] || '';
+      const dateFormatted = `${j.jd} ${monthName} ${j.jy}`;
+
+      badge.textContent = labelStr ? `${dateFormatted} (${labelStr})` : dateFormatted;
+      if (btn) {
+        btn.textContent = labelStr ? `افزودن به تارگت‌های ${labelStr}` : `افزودن به تارگت‌های ${dateFormatted}`;
+      }
+    }
+
+    function setPlanViewDate(offsetDays) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      selectedPlanViewISO = getLocalDateISO(d);
+      updatePlanViewChips();
+      renderPlansList();
+    }
+
+    function updatePlanViewChips() {
+      const viewISO = selectedPlanViewISO || getLocalDateISO();
+      const todayISO = getLocalDateISO();
+      const d1ISO = getLocalDateISO(new Date(Date.now() + 86400000));
+      const d2ISO = getLocalDateISO(new Date(Date.now() + 2 * 86400000));
+      const d3ISO = getLocalDateISO(new Date(Date.now() + 3 * 86400000));
+      const dM1ISO = getLocalDateISO(new Date(Date.now() - 86400000));
+
+      let activeOffset = null;
+      if (viewISO === dM1ISO) activeOffset = -1;
+      else if (viewISO === todayISO) activeOffset = 0;
+      else if (viewISO === d1ISO) activeOffset = 1;
+      else if (viewISO === d2ISO) activeOffset = 2;
+      else if (viewISO === d3ISO) activeOffset = 3;
+
+      const chipMap = {'-1': 'viewChip-m1', '0': 'viewChip-0', '1': 'viewChip-1', '2': 'viewChip-2', '3': 'viewChip-3'};
+      Object.entries(chipMap).forEach(([off, cid]) => {
+        const c = document.getElementById(cid);
+        if (!c) return;
+        c.className = parseInt(off) === activeOffset
+          ? 'py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-indigo-600 text-white shadow-glow-sm text-center transition-all truncate'
+          : 'py-1.5 px-0.5 sm:px-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-center transition-all truncate';
+      });
+
+      const badge = document.getElementById('planViewDateBadge');
+      if (badge) {
+        if (activeOffset === 0) badge.textContent = 'امروز';
+        else if (activeOffset === 1) badge.textContent = 'فردا';
+        else if (activeOffset === -1) badge.textContent = 'دیروز';
+        else if (activeOffset === 2) badge.textContent = '۲ روز بعد';
+        else if (activeOffset === 3) badge.textContent = '۳ روز بعد';
+        else {
+          const d = new Date(viewISO + 'T00:00:00');
+          const j = gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          badge.textContent = `${j.jd} ${SHAMSI_MONTH_NAMES[j.jm]} ${j.jy}`;
+        }
+      }
     }
 
     function handleCreatePlanSubmit(e) {
       e.preventDefault();
       const subjectSelect = document.getElementById('planSubjectSelect');
       const topicInput = document.getElementById('planTopicInput');
+      const descInput = document.getElementById('planDescInput');
       const testInput = document.getElementById('planTestCountInput');
       const durInput = document.getElementById('planDurationInput');
 
       const subjectId = subjectSelect ? subjectSelect.value : (appData.subjects[0]?.id || 'sub_phy');
-      const topic = topicInput ? topicInput.value.trim() : 'تمرین تست';
-      const testCount = parseInt(testInput?.value) || 40;
+      const topic = topicInput ? topicInput.value.trim() : (currentPlanType === 'test' ? 'تمرین تست' : 'مطالعه تشریحی');
+      const description = descInput ? descInput.value.trim() : '';
+      const testCount = parseInt(testInput?.value) || (currentPlanType === 'test' ? 40 : 15);
       const durationMinutes = parseInt(durInput?.value) || 50;
+      const planDate = selectedPlanTargetISO || getLocalDateISO();
 
       const newPlan = {
         id: 'plan_' + Math.random().toString(36).substring(2, 9),
+        type: currentPlanType, // 'test' | 'descriptive'
         subjectId: subjectId,
         topic: topic,
+        description: description,
         testCount: testCount,
         durationMinutes: durationMinutes,
         completedTests: 0,
         isCompleted: false,
-        date: getLocalDateISO(),
+        date: planDate,
         timestamp: Date.now()
       };
 
@@ -2957,10 +3465,23 @@
       saveDataToStorage(false);
 
       if (topicInput) topicInput.value = '';
-      triggerToast(`تارگت ${testCount} تست اضافه شد`, 'success');
+      if (descInput) descInput.value = '';
+
+      // Switch right panel view to this date so user sees the new target immediately
+      selectedPlanViewISO = planDate;
+      updatePlanViewChips();
       renderPlansList();
       renderDashboardPlansMiniList();
       renderDailyReviewSection();
+
+      // On mobile, switch back to list tab to see the created plan
+      if (window.innerWidth < 1024) {
+        switchPlannerMobileTab('list');
+      }
+
+      const isDesc = (currentPlanType === 'descriptive');
+      const unitStr = isDesc ? 'صفحه/تمرین' : 'تست';
+      triggerToast(`تارگت ${testCount} ${unitStr} با موفقیت ثبت و همگام شد ☁️`, 'success');
     }
 
     // --- REFINED PLAN CARDS RENDERER ---
@@ -2969,19 +3490,37 @@
       const emptyState = document.getElementById('planEmptyState');
       if (!container) return;
 
-      const todayISO = getLocalDateISO();
-      const todayPlans = (appData.plans || []).filter(p => p.date === todayISO || !p.date);
+      const viewISO = selectedPlanViewISO || getLocalDateISO();
+      const viewPlans = (appData.plans || []).filter(p => p.date === viewISO || (!p.date && viewISO === getLocalDateISO()));
 
       const countBadge = document.getElementById('planCountBadge');
-      if (countBadge) countBadge.textContent = `${todayPlans.length} فعال`;
+      if (countBadge) countBadge.textContent = `${viewPlans.length} فعال`;
+      const tabBadge = document.getElementById('tabPlanCountBadge');
+      if (tabBadge) tabBadge.textContent = viewPlans.length;
 
-      let totalTests = 0;
-      let completedTests = 0;
+      // Update title
+      const titleEl = document.getElementById('planListTitle');
+      if (titleEl) {
+        const todayISO = getLocalDateISO();
+        const d1ISO = getLocalDateISO(new Date(Date.now() + 86400000));
+        const dM1ISO = getLocalDateISO(new Date(Date.now() - 86400000));
+        if (viewISO === todayISO) titleEl.textContent = 'لیست تارگت‌های امروز';
+        else if (viewISO === d1ISO) titleEl.textContent = 'لیست تارگت‌های فردا';
+        else if (viewISO === dM1ISO) titleEl.textContent = 'لیست تارگت‌های دیروز';
+        else {
+          const d = new Date(viewISO + 'T00:00:00');
+          const j = gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          titleEl.textContent = `تارگت‌های ${j.jd} ${SHAMSI_MONTH_NAMES[j.jm]} ${j.jy}`;
+        }
+      }
+
+      let totalItems = 0;
+      let completedItems = 0;
       let totalMins = 0;
 
-      todayPlans.forEach(p => {
-        totalTests += p.testCount;
-        completedTests += (p.completedTests || (p.isCompleted ? p.testCount : 0));
+      viewPlans.forEach(p => {
+        totalItems += p.testCount;
+        completedItems += (p.completedTests || (p.isCompleted ? p.testCount : 0));
         totalMins += p.durationMinutes;
       });
 
@@ -2989,14 +3528,14 @@
       const compTestEl = document.getElementById('planStatCompletedTests');
       const totalDurEl = document.getElementById('planStatTotalDuration');
 
-      if (totalTestEl) totalTestEl.textContent = `${totalTests} تست`;
+      if (totalTestEl) totalTestEl.textContent = `${viewPlans.length} تارگت (${totalItems} واحد)`;
       if (compTestEl) {
-        const pct = totalTests > 0 ? Math.round((completedTests / totalTests) * 100) : 0;
-        compTestEl.textContent = `${completedTests} (${pct}%)`;
+        const pct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        compTestEl.textContent = `${completedItems} (${pct}%)`;
       }
       if (totalDurEl) totalDurEl.textContent = formatDurationHM(totalMins);
 
-      if (todayPlans.length === 0) {
+      if (viewPlans.length === 0) {
         container.innerHTML = '';
         if (emptyState) emptyState.classList.remove('hidden');
         return;
@@ -3005,41 +3544,50 @@
       if (emptyState) emptyState.classList.add('hidden');
       container.innerHTML = '';
 
-      todayPlans.forEach(plan => {
+      viewPlans.forEach(plan => {
         const sub = appData.subjects.find(s => s.id === plan.subjectId) || { name: 'درس', color: '#6366f1' };
+        const isDesc = (plan.type === 'descriptive');
+        const unitName = isDesc ? 'صفحه' : 'تست';
+        const typeBadgeText = isDesc ? 'تشریحی' : 'تستی';
+        const typeBadgeColor = isDesc ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
         const done = plan.isCompleted || (plan.completedTests >= plan.testCount);
         const percent = Math.min(100, Math.round(((plan.completedTests || 0) / plan.testCount) * 100));
 
         const card = document.createElement('div');
-        card.className = `p-4 rounded-3xl border transition-all space-y-3 ${done ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-100/80 dark:bg-slate-900/60 border-slate-200 dark:border-white/10'}`;
+        card.className = `p-3.5 sm:p-4 rounded-3xl border transition-all space-y-3 ${done ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-100/80 dark:bg-slate-900/60 border-slate-200 dark:border-white/10'}`;
         card.innerHTML = `
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 truncate flex-1">
-              <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${sub.color}"></span>
-              <span class="px-2.5 py-0.5 rounded-lg text-xs font-bold" style="background-color: ${hexToRgba(sub.color, 0.15)}; color: ${sub.color}">${sub.name}</span>
-              <h4 class="font-black text-xs sm:text-sm text-slate-800 dark:text-slate-100 truncate">${plan.topic}</h4>
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${sub.color}"></span>
+              <span class="px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-bold" style="background-color: ${hexToRgba(sub.color, 0.15)}; color: ${sub.color}">${sub.name}</span>
+              <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold border ${typeBadgeColor}">${typeBadgeText}</span>
+              <h4 class="font-black text-xs sm:text-sm text-slate-800 dark:text-slate-100 break-words leading-tight">${plan.topic}</h4>
             </div>
 
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button type="button" onclick="togglePlanCompleted('${plan.id}')" class="px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${done ? 'bg-emerald-600 text-white shadow-glow-emerald' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'}" title="${done ? 'لغو وضعیت انجام' : 'علامت‌گذاری به عنوان انجام شده'}">
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <button type="button" onclick="togglePlanCompleted('${plan.id}')" class="px-2 sm:px-2.5 py-1 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-1 transition-all ${done ? 'bg-emerald-600 text-white shadow-glow-emerald' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'}" title="${done ? 'لغو وضعیت انجام' : 'علامت‌گذاری به عنوان انجام شده'}">
                 <i data-lucide="${done ? 'check-circle-2' : 'circle'}" class="w-3.5 h-3.5"></i>
-                <span>${done ? 'تکمیل شد' : 'در حال انجام'}</span>
+                <span class="hidden xs:inline sm:inline">${done ? 'تکمیل شد' : 'در حال انجام'}</span>
               </button>
 
               <button type="button" onclick="deletePlan('${plan.id}')" class="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors" title="حذف این تارگت">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
               </button>
             </div>
           </div>
+          ${plan.description ? `
+          <div class="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-1.5">
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">${plan.description}</p>
+          </div>` : ''}
 
-          <div class="bg-white/80 dark:bg-slate-950/80 p-3 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
-            <div class="flex items-center justify-between text-xs font-bold">
-              <span class="text-slate-700 dark:text-slate-300">پیشرفت تست: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">${plan.completedTests || 0}</strong> / <span class="font-mono">${plan.testCount}</span> تست (${percent}%)</span>
-              <div class="flex items-center gap-1 font-mono">
-                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', -5)" class="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-all">-5</button>
-                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', -1)" class="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-all">-1</button>
-                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', 1)" class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-[11px] font-black transition-all">+1</button>
-                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', 5)" class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-[11px] font-black transition-all">+5</button>
+          <div class="bg-white/80 dark:bg-slate-950/80 p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-bold">
+              <span class="text-slate-700 dark:text-slate-300 text-[11px] sm:text-xs">پیشرفت: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">${plan.completedTests || 0}</strong> / <span class="font-mono">${plan.testCount}</span> ${unitName} (${percent}%)</span>
+              <div class="flex items-center gap-1 font-mono self-end sm:self-auto">
+                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', -5)" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-all">-5</button>
+                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', -1)" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-all">-1</button>
+                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', 1)" class="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-[11px] font-black transition-all">+1</button>
+                <button type="button" onclick="adjustPlanTestProgress('${plan.id}', 5)" class="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-[11px] font-black transition-all">+5</button>
               </div>
             </div>
             <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -3047,19 +3595,19 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between text-xs pt-0.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-0.5">
             <span class="text-slate-500 dark:text-slate-400 text-[11px]">زمان هدف: <strong class="font-mono">${plan.durationMinutes}</strong> دقیقه</span>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 self-end sm:self-auto w-full sm:w-auto justify-end">
               ${done ? `
-                <button type="button" onclick="togglePlanCompleted('${plan.id}')" class="px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold text-[11px] flex items-center gap-1 transition-all">
+                <button type="button" onclick="togglePlanCompleted('${plan.id}')" class="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold text-[11px] flex items-center gap-1 transition-all">
                   <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
-                  <span>لغو انجام</span>
+                  <span>لغو</span>
                 </button>
               ` : ''}
 
-              <button type="button" onclick="convertPlanToStudyLog('${plan.id}')" class="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-glow-sm transition-all">
-                <i data-lucide="plus-circle" class="w-3 h-3"></i>
+              <button type="button" onclick="convertPlanToStudyLog('${plan.id}')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-glow-sm transition-all">
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
                 <span>ثبت ${plan.durationMinutes} دقیقه در سوابق</span>
               </button>
             </div>
@@ -3080,13 +3628,17 @@
       if (countBadge) countBadge.textContent = `${todayPlans.length} تارگت فعال`;
 
       if (todayPlans.length === 0) {
-        container.innerHTML = '<p class="text-[11px] text-slate-400 py-3 text-center">هیچ تارگت تستی برای امروز ثبت نشده است</p>';
+        container.innerHTML = '<p class="text-[11px] text-slate-400 py-3 text-center">هیچ تارگتی برای امروز ثبت نشده است</p>';
         return;
       }
 
       container.innerHTML = '';
       todayPlans.forEach(plan => {
         const sub = appData.subjects.find(s => s.id === plan.subjectId) || { name: 'درس', color: '#6366f1' };
+        const isDesc = (plan.type === 'descriptive');
+        const unitName = isDesc ? 'صفحه' : 'تست';
+        const typeBadgeText = isDesc ? 'تشریحی' : 'تستی';
+        const typeBadgeColor = isDesc ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400';
         const done = plan.isCompleted || (plan.completedTests >= plan.testCount);
         const percent = Math.min(100, Math.round(((plan.completedTests || 0) / plan.testCount) * 100));
 
@@ -3097,6 +3649,7 @@
             <div class="flex items-center gap-1.5 truncate flex-1">
               <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${sub.color}"></span>
               <span class="px-2 py-0.5 rounded text-[10px] font-bold" style="background-color: ${hexToRgba(sub.color, 0.15)}; color: ${sub.color}">${sub.name}</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${typeBadgeColor}">${typeBadgeText}</span>
               <span class="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">${plan.topic}</span>
             </div>
 
@@ -3114,7 +3667,7 @@
 
           <div class="bg-white/80 dark:bg-slate-950/80 p-2 rounded-xl border border-slate-200 dark:border-white/5 space-y-1.5">
             <div class="flex items-center justify-between text-[11px] font-bold">
-              <span class="text-slate-600 dark:text-slate-300">پیشرفت: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">${plan.completedTests || 0}</strong> / <span class="font-mono">${plan.testCount}</span> (${percent}%)</span>
+              <span class="text-slate-600 dark:text-slate-300">پیشرفت: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">${plan.completedTests || 0}</strong> / <span class="font-mono">${plan.testCount}</span> ${unitName} (${percent}%)</span>
               <div class="flex items-center gap-1 font-mono">
                 <button type="button" onclick="adjustPlanTestProgress('${plan.id}', -5)" class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 hover:bg-rose-500/20 text-[10px] font-bold">-5</button>
                 <button type="button" onclick="adjustPlanTestProgress('${plan.id}', -1)" class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 hover:bg-rose-500/20 text-[10px] font-bold">-1</button>
@@ -3177,7 +3730,7 @@
     }
 
     function deletePlan(planId) {
-      if (confirm('آیا از حذف این تارگت تست اطمینان دارید؟')) {
+      if (confirm('آیا از حذف این تارگت اطمینان دارید؟')) {
         appData.plans = (appData.plans || []).filter(p => p.id !== planId);
         saveDataToStorage(false);
         renderPlansList();
@@ -3191,19 +3744,22 @@
       const plan = (appData.plans || []).find(p => p.id === planId);
       if (!plan) return;
       const sub = appData.subjects.find(s => s.id === plan.subjectId) || { name: 'درس' };
+      const isDesc = (plan.type === 'descriptive');
+      const unitName = isDesc ? 'صفحه' : 'تست';
+      const notePrefix = isDesc ? 'مطالعه تشریحی' : 'تست‌زنی';
       const newLog = {
         id: 'log_' + Math.random().toString(36).substring(2, 9),
         subjectId: plan.subjectId,
-        date: getLocalDateISO(),
+        date: plan.date || getLocalDateISO(),
         durationMinutes: plan.durationMinutes,
-        notes: `تست‌زنی: ${plan.topic} (${plan.completedTests || plan.testCount} تست)`,
+        notes: `${notePrefix}: ${plan.topic} (${plan.completedTests || plan.testCount} ${unitName})`,
         timestamp: Date.now()
       };
       appData.logs.unshift(newLog);
       plan.isCompleted = true;
       plan.completedTests = plan.testCount;
       saveDataToStorage(false);
-      triggerToast(`جلسه تست ${sub.name} در سوابق مطالعه ثبت شد`, 'success');
+      triggerToast(`جلسه ${notePrefix} ${sub.name} در سوابق مطالعه ثبت شد`, 'success');
       renderAll();
     }
 
@@ -3371,25 +3927,17 @@
 
       // Check for live active running stopwatch
       const isToday = (selectedReviewIsoDate === getLocalDateISO());
-      const isLoggerSwRunning = stopwatch.isRunning;
-      const isDashSwRunning = dashStopwatch.isRunning;
+      const isLiveRunning = activeStopwatchState.isRunning;
       let activeSwSubId = null;
       let activeSwStartTime = '';
       let activeSwElapsedSec = 0;
       let activeSwNotes = '';
 
-      if (isToday) {
-        if (isLoggerSwRunning) {
-          activeSwSubId = document.getElementById('stopwatchSubjectSelect')?.value;
-          activeSwStartTime = stopwatch.startTimeFormatted || 'اکنون';
-          activeSwElapsedSec = stopwatch.elapsedSeconds;
-          activeSwNotes = document.getElementById('stopwatchNotes')?.value || 'مطالعه با کرنومتر';
-        } else if (isDashSwRunning) {
-          activeSwSubId = document.getElementById('dashStopwatchSubjectSelect')?.value;
-          activeSwStartTime = dashStopwatch.startTimeFormatted || 'اکنون';
-          activeSwElapsedSec = dashStopwatch.elapsedSeconds;
-          activeSwNotes = 'مطالعه با کرنومتر سریع';
-        }
+      if (isToday && (isLiveRunning || activeStopwatchState.elapsedSeconds > 0)) {
+        activeSwSubId = activeStopwatchState.subjectId || getSelectedStopwatchSubject();
+        activeSwStartTime = activeStopwatchState.startTimeFormatted || 'اکنون';
+        activeSwElapsedSec = activeStopwatchState.elapsedSeconds;
+        activeSwNotes = activeStopwatchState.notes || 'مطالعه با زمان‌سنج';
       }
 
       let activeSubjectIds = Array.from(new Set([...dayLogs.map(l => l.subjectId), ...dayPlans.map(p => p.subjectId)]));
@@ -3987,92 +4535,25 @@
       return streak;
     }
 
-    // --- SECONDARY LIVE STOPWATCH ---
+    // --- SECONDARY LIVE STOPWATCH ALIASES (DELEGATES TO UNIFIED ENGINE) ---
     function toggleStopwatch() {
-      if (!stopwatch.isRunning) {
-        stopwatch.isRunning = true;
-        if (!stopwatch.startTime) {
-          stopwatch.startTime = serverNow();
-          stopwatch.startTimeFormatted = formatCurrentClockTime();
-        } else {
-          // Resume: recalculate startTime so elapsed stays continuous
-          stopwatch.startTime = serverNow() - (stopwatch.elapsedSeconds * 1000);
-        }
-        startTimerInterval();
-        updateStopwatchUI(true);
-        saveActiveStopwatchToDisk();
-        triggerToast('زمان‌سنج آغاز شد', 'info');
-      } else {
-        stopwatch.isRunning = false;
-        clearInterval(stopwatch.timerInterval);
-        stopwatch.elapsedSeconds = Math.max(0, Math.floor((serverNow() - stopwatch.startTime) / 1000));
-        updateStopwatchUI(false);
-        saveActiveStopwatchToDisk();
-      }
+      toggleGlobalStopwatch();
     }
 
     function startTimerInterval() {
-      clearInterval(stopwatch.timerInterval);
-      stopwatch.timerInterval = setInterval(() => {
-        const total = Math.max(0, Math.floor((serverNow() - stopwatch.startTime) / 1000));
-        stopwatch.elapsedSeconds = total;
-        const h = String(Math.floor(total / 3600)).padStart(2, '0');
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-        const s = String(total % 60).padStart(2, '0');
-        const d = document.getElementById('stopwatchDisplay');
-        if (d) d.textContent = `${h}:${m}:${s}`;
-      }, 1000);
+      // Handled in unified engine
     }
 
     function updateStopwatchUI(running) {
-      const text = document.getElementById('stopwatchToggleText');
-      const saveBtn = document.getElementById('stopwatchSaveBtn');
-      const resetBtn = document.getElementById('stopwatchResetBtn');
-      if (running) {
-        if (text) text.textContent = 'توقف';
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.className = 'py-2.5 px-3 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5'; }
-        if (resetBtn) resetBtn.classList.remove('hidden');
-      } else {
-        if (text) text.textContent = stopwatch.elapsedSeconds > 0 ? 'ادامه' : 'شروع';
-      }
+      updateAllStopwatchUIs(running, activeStopwatchState.elapsedSeconds);
     }
 
     function saveStopwatchSession() {
-      let total = stopwatch.elapsedSeconds;
-      if (stopwatch.isRunning) total = Math.floor((Date.now() - stopwatch.startTime) / 1000);
-      const mins = Math.max(1, Math.round(total / 60));
-      const subjectId = document.getElementById('stopwatchSubjectSelect')?.value || (appData.subjects[0]?.id || 'sub_phy');
-      const notes = document.getElementById('stopwatchNotes')?.value.trim() || '';
-
-      appData.logs.unshift({
-        id: 'log_' + Math.random().toString(36).substring(2, 9),
-        subjectId: subjectId,
-        date: getLocalDateISO(),
-        startTime: stopwatch.startTimeFormatted || formatCurrentClockTime(),
-        endTime: formatCurrentClockTime(),
-        durationMinutes: mins,
-        notes: notes,
-        timestamp: Date.now()
-      });
-      saveDataToStorage(false);
-      const notesEl = document.getElementById('stopwatchNotes');
-      if (notesEl) notesEl.value = '';
-      resetStopwatch(false);
-      clearActiveStopwatchFromDisk();
-      triggerToast(`جلسه ${formatDurationHM(mins)} ذخیره شد`, 'success');
-      renderAll();
+      saveGlobalStopwatchSession();
     }
 
     function resetStopwatch(confirmPrompt = true) {
-      if (confirmPrompt && !confirm('آیا از ریست کردن زمان‌سنج اطمینان دارید؟')) return;
-      stopwatch.isRunning = false;
-      clearInterval(stopwatch.timerInterval);
-      stopwatch.startTime = 0;
-      stopwatch.elapsedSeconds = 0;
-      const d = document.getElementById('stopwatchDisplay');
-      if (d) d.textContent = '00:00:00';
-      updateStopwatchUI(false);
-      clearActiveStopwatchFromDisk();
+      resetGlobalStopwatch(confirmPrompt);
     }
 
     // --- SUBJECT MODAL ---
