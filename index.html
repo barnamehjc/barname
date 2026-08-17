@@ -1905,6 +1905,19 @@
       { id: 'sub_gph', name: 'جغرافیا', color: '#a855f7' }
     ];
 
+    function mergeSubjectsWithDefaults(existingSubjects) {
+      if (!Array.isArray(existingSubjects) || existingSubjects.length === 0) {
+        return [...DEFAULT_SUBJECTS];
+      }
+      const result = [...existingSubjects];
+      DEFAULT_SUBJECTS.forEach(defSub => {
+        if (!result.some(s => s.id === defSub.id || s.name === defSub.name)) {
+          result.push(defSub);
+        }
+      });
+      return result;
+    }
+
     let appData = {
       subjects: [...DEFAULT_SUBJECTS],
       logs: [],
@@ -2460,12 +2473,11 @@
     // --- 🔄 BULLETPROOF MULTI-USER CLOUD & LOCAL STORAGE ENGINE ---
     let cloudSyncTimeout = null;
     let isInitialCloudLoaded = false;
-    // Unique device ID to prevent lastModified timestamp collision between two devices
+    // Unique device ID to identify different devices
     const DEVICE_ID = 'dev_' + Math.random().toString(36).substring(2, 9);
 
     // ⏰ SERVER TIME ENGINE: All stopwatch calculations use server time, not device clock
-    // This eliminates clock skew between laptop, phone, tablet, etc.
-    let serverTimeOffset = 0; // = serverTime - Date.now() at last sync
+    let serverTimeOffset = 0;
 
     function serverNow() {
       return Date.now() + serverTimeOffset;
@@ -2478,11 +2490,10 @@
         if (!res.ok) return;
         const t1 = Date.now();
         const data = await res.json();
-        // Compensate for network round-trip latency (half RTT)
         const rtt = t1 - t0;
         serverTimeOffset = data.serverTime + Math.floor(rtt / 2) - Date.now();
       } catch (e) {
-        serverTimeOffset = 0; // fallback: use local clock
+        serverTimeOffset = 0;
       }
     }
 
@@ -2504,12 +2515,13 @@
           const parsed = JSON.parse(stored);
           if (parsed && typeof parsed === 'object') {
             appData = {
-              subjects: (parsed.subjects && parsed.subjects.length > 0) ? parsed.subjects : [...DEFAULT_SUBJECTS],
+              subjects: mergeSubjectsWithDefaults(parsed.subjects),
               logs: Array.isArray(parsed.logs) ? parsed.logs : [],
               plans: Array.isArray(parsed.plans) ? parsed.plans : [],
               settings: parsed.settings || { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
               activeStopwatch: parsed.activeStopwatch || null,
-              lastModified: parsed.lastModified || 0
+              lastModified: parsed.lastModified || 0,
+              revision: parsed.revision || 0
             };
           }
         } catch (e) {
@@ -2519,27 +2531,29 @@
             plans: [],
             settings: { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
             activeStopwatch: null,
-            lastModified: 0
+            lastModified: 0,
+            revision: 0
           };
         }
       } else {
-        // Clean blank account for this user (0 fake data)
         appData = {
           subjects: [...DEFAULT_SUBJECTS],
           logs: [],
           plans: [],
           settings: { theme: 'dark', dailyGoalHours: 6, customDays: 30, chartType: 'line', chartSubject: 'multi', viewMode: 'auto' },
           activeStopwatch: null,
-          lastModified: 0
+          lastModified: 0,
+          revision: 0
         };
       }
 
       renderAll();
-      await syncServerTime(); // sync clock with server before stopwatch calculations
+      await syncServerTime();
       syncActiveStopwatchFromAppData();
       await syncFromCloud(true);
     }
 
+    // ─── ☁️ همگام‌سازی زنده و کاملاً نامحسوس در پس‌زمینه (بدون رفرش یا پرش صفحه) ───
     async function syncFromCloud(silent = true) {
       if (!currentLoggedInUser) return;
       try {
@@ -2547,47 +2561,55 @@
         if (res.ok) {
           const serverData = await res.json();
           if (serverData && serverData.exists !== false && Array.isArray(serverData.logs)) {
+            const serverRev = serverData.revision || 0;
+            const localRev = appData.revision || 0;
             const serverTime = serverData.lastModified || 0;
             const localTime = appData.lastModified || 0;
-            // Use lastDevice to detect genuine changes from another device
             const serverDevice = serverData.lastDevice || '';
 
-            // Trust server if: initial load, OR server is strictly newer, OR server was written by a different device
-            const shouldPullFromServer = !isInitialCloudLoaded || serverTime > localTime || (serverTime === localTime && serverDevice && serverDevice !== DEVICE_ID);
+            // بررسی اینکه آیا داده‌های سرور جدیدتر است
+            const isServerNewer = (serverRev > localRev) || (serverTime > localTime) || (!isInitialCloudLoaded) || (serverDevice && serverDevice !== DEVICE_ID && (serverTime >= localTime || serverRev >= localRev));
 
-            if (shouldPullFromServer) {
+            if (isServerNewer) {
               const prevSwState = appData.activeStopwatch;
+              const prevSwStr = JSON.stringify(prevSwState);
+
               appData = {
-                subjects: (serverData.subjects && serverData.subjects.length > 0) ? serverData.subjects : [...DEFAULT_SUBJECTS],
+                subjects: mergeSubjectsWithDefaults(serverData.subjects),
                 logs: Array.isArray(serverData.logs) ? serverData.logs : [],
                 plans: Array.isArray(serverData.plans) ? serverData.plans : [],
                 settings: serverData.settings || appData.settings,
                 activeStopwatch: serverData.activeStopwatch !== undefined ? serverData.activeStopwatch : null,
                 lastModified: serverTime,
-                lastDevice: serverDevice
+                lastDevice: serverDevice,
+                revision: serverRev
               };
               localStorage.setItem(getUserStorageKey(), JSON.stringify(appData));
               isInitialCloudLoaded = true;
-              // Only re-sync stopwatch UI if stopwatch state actually changed
+
+              // بروزرسانی هوشمند کرنومتر در صورت تغییر وضعیت بدون پرش
               const newSwState = appData.activeStopwatch;
-              const swChanged = JSON.stringify(prevSwState) !== JSON.stringify(newSwState);
-              if (swChanged) {
+              const newSwStr = JSON.stringify(newSwState);
+              if (prevSwStr !== newSwStr) {
                 syncActiveStopwatchFromAppData();
               }
+
+              // بروزرسانی زنده تمام کامپوننت‌ها به صورت نامحسوس
               renderAll();
-              if (!silent) triggerToast(`همگام‌سازی ابری انجام شد ☁️`, 'success');
-            } else if (localTime > serverTime) {
-              // Local has strictly newer changes, push to cloud
+              renderDailyReviewSection();
+              renderPlansList();
+              renderDashboardPlansMiniList();
+              if (!silent) triggerToast(`اطلاعات با سرور بروز شد ☁️`, 'success');
+            } else if (localTime > serverTime && localRev >= serverRev) {
               pushToCloud();
             }
           } else if (serverData && serverData.exists === false && (appData.logs.length > 0 || appData.plans.length > 0)) {
-            // First time server is empty but local has data: upload local to server
             pushToCloud();
           }
           isInitialCloudLoaded = true;
         }
       } catch (err) {
-        console.log('Cloud sync offline or static');
+        console.log('Live background sync silent check');
       }
     }
 
@@ -2624,43 +2646,20 @@
       }, 200);
     }
 
-    // ─── هماهنگی خودکار بین دستگاه‌ها: هر ۱۵ ثانیه بررسی، در صورت تغییر توسط دستگاه دیگر → ریلود کامل ───
-    async function checkAndReloadIfNeeded() {
-      if (!currentLoggedInUser) return;
-      try {
-        const res = await fetch(`./api/sync?user=${encodeURIComponent(currentLoggedInUser)}&_t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const serverData = await res.json();
-        if (!serverData || serverData.exists === false) return;
+    // ─── هماهنگی خودکار و نامحسوس بین دستگاه‌ها: هر ۱۰ ثانیه در پس‌زمینه (بدون رفرش صفحه) ───
+    setInterval(() => {
+      syncFromCloud(true);
+    }, 10000);
 
-        const serverRev = serverData.revision || 0;
-        const localRev = appData.revision || 0;
-        const serverTime = serverData.lastModified || 0;
-        const localTime = appData.lastModified || 0;
-        const serverDevice = serverData.lastDevice || '';
-
-        // اگه دستگاه دیگه‌ای داده‌های جدیدتر آپلود کرده → ریلود خودکار برای همگام‌سازی فوری
-        const changedByOtherDevice = serverDevice && serverDevice !== DEVICE_ID;
-        const serverIsNewer = (serverRev > localRev) || (serverTime > localTime);
-
-        if (changedByOtherDevice && serverIsNewer) {
-          window.location.reload();
-        }
-      } catch (err) {}
-    }
-
-    // بررسی هر ۱۵ ثانیه
-    setInterval(checkAndReloadIfNeeded, 15000);
-
-    // بررسی فوری هنگام بازگشت به تب یا روشن شدن صفحه
+    // بررسی آنی هنگام بازگشت کاربر به تب یا روشن شدن صفحه نمایش
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        checkAndReloadIfNeeded();
+        syncFromCloud(true);
       }
     });
 
     window.addEventListener('focus', () => {
-      checkAndReloadIfNeeded();
+      syncFromCloud(true);
     });
 
     function injectSampleDemoData(showToast = true) {

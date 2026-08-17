@@ -1,8 +1,8 @@
 {
   "users": {
     "sajad": {
-      "lastDevice": "dev_laptop_111",
-      "lastModified": 1786984374664,
+      "lastDevice": "server_admin_restore",
+      "lastModified": 1786986260371,
       "subjects": [
         {
           "id": "sub_che",
@@ -13,6 +13,51 @@
           "id": "sub_phy",
           "name": "فیزیک",
           "color": "#3b82f6"
+        },
+        {
+          "id": "sub_geo",
+          "name": "هندسه",
+          "color": "#8b5cf6"
+        },
+        {
+          "id": "sub_sta",
+          "name": "آمار و احتمال",
+          "color": "#06b6d4"
+        },
+        {
+          "id": "sub_cal",
+          "name": "حسابان",
+          "color": "#10b981"
+        },
+        {
+          "id": "sub_per",
+          "name": "فارسی",
+          "color": "#f59e0b"
+        },
+        {
+          "id": "sub_eng",
+          "name": "زبان انگلیسی",
+          "color": "#6366f1"
+        },
+        {
+          "id": "sub_ara",
+          "name": "عربی",
+          "color": "#14b8a6"
+        },
+        {
+          "id": "sub_env",
+          "name": "محیط زیست",
+          "color": "#84cc16"
+        },
+        {
+          "id": "sub_his",
+          "name": "تاریخ",
+          "color": "#d97706"
+        },
+        {
+          "id": "sub_gph",
+          "name": "جغرافیا",
+          "color": "#a855f7"
         }
       ],
       "logs": [],
@@ -28,7 +73,7 @@
           "completedTests": 10,
           "isCompleted": false,
           "date": "2026-08-18",
-          "timestamp": 1786984374665
+          "timestamp": 1786986195456
         },
         {
           "id": "plan_desc_002",
@@ -41,14 +86,14 @@
           "completedTests": 5,
           "isCompleted": false,
           "date": "2026-08-17",
-          "timestamp": 1786984374665
+          "timestamp": 1786986195456
         }
       ],
       "settings": {
         "theme": "dark"
       },
-      "revision": 3,
-      "lastServerSync": 1786984374666
+      "revision": 5,
+      "lastServerSync": 1786986195457
     },
     "test": {
       "logs": [
